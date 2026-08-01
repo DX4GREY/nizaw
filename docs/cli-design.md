@@ -1,6 +1,6 @@
 # Nizaw — CLI Design
 
-Status: Phase 0 — Draft for review
+Status: Stable command-line interface design
 
 ## 1. Command hierarchy
 
@@ -119,8 +119,7 @@ On error, JSON mode emits a single error object to stdout (not stderr, so
 
 ## 5. Argument parsing: open decision
 
-Two options, to be settled before Phase 9 (not blocking Phase 0–8 library
-work):
+Two options were considered for argument parsing:
 
 **Option A — hand-rolled minimal parser** (recommended default)
 - Pros: zero dependency, full control over `--json`/exit-code conventions,
@@ -137,8 +136,8 @@ work):
 Recommendation: **Option A**, because the command tree is shallow and
 uniform (module → subcommand → optional single positional arg), which is
 exactly the case a minimal hand-rolled parser handles well without pulling
-in a dependency. This will be revisited if the CLI's argument complexity
-grows materially (e.g. many optional flags per command, complex validation).
+in a dependency. This implementation uses a hand-rolled parser for simplicity
+and dependency minimalism.
 
 ## 6. Exit codes
 
@@ -159,9 +158,9 @@ exit codes, only about `ErrorCode`.
 
 ## 7. Privileged operations
 
-Phase 5–7 modules (`storage health`, `service status`, etc.) are read-only.
-No CLI command performs a destructive or privilege-escalating action in the
-current roadmap. If/when `service start|stop|enable|disable` are added
+Selected modules (`storage`, `service`, etc.) are read-only. No CLI
+command performs a destructive or privilege-escalating action in the current
+release. If/when `service start|stop|enable|disable` are added
 (explicitly deferred — see `architecture.md` §4 Non-goals), they will
 require an interactive confirmation prompt by default and a `--yes` flag to
 skip it non-interactively, plus a capability/permission pre-check that fails

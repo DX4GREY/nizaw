@@ -1,6 +1,6 @@
 # Contributing to Nizaw
 
-Contributions are welcome. Please keep changes incremental and aligned with the phased architecture in docs/architecture.md.
+Contributions are welcome. Please keep changes incremental and aligned with the architecture in docs/architecture.md.
 
 ## Development workflow
 

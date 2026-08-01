@@ -19,7 +19,7 @@ endif()
 # --- Project options -------------------------------------------------------
 option(NIZAW_BUILD_TESTS "Build unit/integration tests" ON)
 option(NIZAW_BUILD_EXAMPLES "Build example programs" OFF)
-option(NIZAW_BUILD_CLI "Build the nizaw CLI application" OFF)
+option(NIZAW_BUILD_CLI "Build the nizaw CLI application" ON)
 option(NIZAW_BUILD_SHARED "Build libnizaw as a shared library" OFF)
 option(NIZAW_ENABLE_WARNINGS "Enable strict compiler warnings" ON)
 option(NIZAW_ENABLE_ASAN "Enable AddressSanitizer" OFF)
@@ -189,6 +189,20 @@ target_include_directories(nizaw_plugin PUBLIC
 target_compile_features(nizaw_plugin PUBLIC cxx_std_20)
 target_link_libraries(nizaw_plugin PUBLIC nizaw::core nizaw_project_options)
 
+# --- CLI ---------------------------------------------------------------------
+if(NIZAW_BUILD_CLI)
+    add_executable(nizaw
+        src/cli/main.cpp
+        src/cli/cli.cpp
+    )
+    target_include_directories(nizaw PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    target_compile_features(nizaw PUBLIC cxx_std_20)
+    target_link_libraries(nizaw PUBLIC nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw::storage nizaw::network nizaw::service nizaw::security nizaw::plugin nizaw_project_options)
+endif()
+
 # --- Tests -------------------------------------------------------------------
 if(NIZAW_BUILD_TESTS)
     enable_testing()
@@ -229,4 +243,4 @@ if(NIZAW_BUILD_TESTS)
     add_test(NAME nizaw_core_tests COMMAND nizaw_core_tests)
 endif()
 
-message(STATUS "Nizaw ${PROJECT_VERSION} — Phase 9: core + system + process + filesystem + storage + network + service + security + plugin targets available")
+message(STATUS "Nizaw ${PROJECT_VERSION} — core + system + process + filesystem + storage + network + service + security + plugin + cli targets available")

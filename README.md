@@ -2,8 +2,7 @@
 
 Modern Linux System & CLI Framework written in C++20
 
-> **Status:** Phase 0 architecture and Phase 1/2 implementation are now in place.
-> The repository now builds a core library and a system-info module, with automated tests.
+> **Status:** Stable release candidate. The repository builds a complete modular library with CLI support and integrated tests.
 
 ## Features
 
@@ -59,7 +58,7 @@ int main() {
 
 ## Development
 
-The project is being built incrementally, phase by phase, per [docs/architecture.md](docs/architecture.md).
+See [docs/architecture.md](docs/architecture.md) for the full design and module boundaries.
 
 ## Contributing
 

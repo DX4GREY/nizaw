@@ -1,6 +1,6 @@
 # Nizaw — API Design
 
-Status: Phase 0 — Draft for review
+Status: Stable API design and implementation
 
 ## 1. `Result<T>` / `Error` shape
 
@@ -69,11 +69,9 @@ cannot fail don't wrap their return type.
 
 ## 2. Module namespaces and initial signatures
 
-These are the **initial** public surfaces sketched in Phase 0 for planning
-purposes. Each is only actually implemented in its corresponding phase
-(Phase 2 for `system`, Phase 3 for `process`, etc.) and may be refined at
-that point — Phase 0 does not freeze exact struct fields, only the shape of
-the API.
+These are the public surfaces planned for the current release. Each may be
+refined as the implementation evolves, but the API shape remains the
+primary contract.
 
 ```cpp
 namespace nizaw::system {
@@ -211,7 +209,7 @@ public:
     virtual Result<ServiceInfo> status(const std::string& unit_name) = 0;
 };
 
-Result<std::unique_ptr<ServiceManager>> default_manager();  // systemd-backed in Phase 7
+Result<std::unique_ptr<ServiceManager>> default_manager();  // systemd-backed by default when available
 }
 
 namespace nizaw::security {
@@ -250,7 +248,7 @@ modules stay serialization-agnostic so library consumers aren't forced to
 pull in a JSON dependency they don't want. See `cli-design.md` §4 for the
 exact JSON shape per command.
 
-## 5. Shared library / ABI considerations (forward-looking, not a Phase 0
+## 5. Shared library / ABI considerations (forward-looking, not a current
 commitment)
 
 For a future ABI-stable release:

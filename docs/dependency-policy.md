@@ -1,6 +1,6 @@
 # Nizaw — Dependency Policy
 
-Status: Phase 0 — Draft for review
+Status: Stable dependency policy
 
 ## 1. Default posture
 
@@ -42,7 +42,7 @@ shell-injection / TOCTOU surface the project's security requirements forbid.
 | Dependency | Module    | Required or optional | Reasoning |
 |------------|-----------|----------------------|-----------|
 | `libsystemd` (`sd-bus`) | `service` | Optional, feature-gated by `NIZAW_ENABLE_SYSTEMD` (default ON on systemd distros, buildable OFF) | systemd status/listing requires D-Bus. Hand-rolling a D-Bus client is a large, security-sensitive undertaking (message framing, authentication) disproportionate to what `sd-bus` already solves correctly and stably as part of the base systemd install on all target distros except where systemd itself is absent. |
-| Test framework (candidate: Catch2, header-only) | `tests` only, never shipped in `libnizaw`/`nizaw` binaries | Optional, dev-only | Needed for Phase 1 onward's unit tests; does not affect the shipped library/CLI dependency footprint at all since it's test-only. Final selection deferred to Phase 1 when test infrastructure is actually built. |
+| Test framework (candidate: Catch2, header-only) | `tests` only, never shipped in `libnizaw`/`nizaw` binaries | Optional, dev-only | Needed for unit tests; does not affect the shipped library/CLI dependency footprint at all since it's test-only. Selection is deferred until the test infrastructure is finalized. |
 
 No dependency is currently identified for: `core`, `system`, `process`,
 `filesystem`, `storage`, `network`, `security`, `cli`, `plugin`. These are
@@ -51,9 +51,8 @@ library and direct Linux kernel interfaces.
 
 ## 5. CLI argument parsing
 
-Not yet finalized — tracked as an open decision in `cli-design.md` §5, with
-a hand-rolled minimal parser as the current recommendation specifically to
-avoid adding a dependency for a shallow, uniform command tree.
+The chosen parser is a hand-rolled minimal parser, which avoids adding a
+dependency for a shallow, uniform command tree.
 
 ## 6. Logging
 
@@ -66,8 +65,8 @@ build dependency for a solved problem.
 ## 7. Plugin loading
 
 `dlopen`/`dlfcn.h` (part of glibc, not a "dependency" in the policy sense —
-it's a base-system Linux API) is used for the `.so`-based plugin system in
-Phase 9. No plugin-framework library is used.
+it's a base-system Linux API) is used for the `.so`-based plugin system.
+No plugin-framework library is used.
 
 ## 8. Revisiting this policy
 

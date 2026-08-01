@@ -1,7 +1,7 @@
 # Nizaw — Architecture
 
-Status: Phase 0 — Draft for review
-Version: 0.0.0 (pre-alpha, architecture-only)
+Status: Stable architecture and implementation
+Version: 0.1.0 (pre-release)
 
 ## 1. Purpose
 
@@ -31,7 +31,7 @@ never an afterthought and always stays independently useful/embeddable.
 - Distro-agnostic tooling authors who don't want to special-case Ubuntu vs
   Arch vs Fedora for basic system introspection.
 
-## 3. Scope (Phase 0–10 as currently planned)
+## 3. Scope
 
 In scope:
 - Read-mostly system introspection: system info, process enumeration/
@@ -124,7 +124,7 @@ pull in `nizaw::network`).
 Default is zero third-party runtime dependencies. The C++20 standard library
 and Linux kernel APIs are preferred over any library. The only dependency
 under active consideration and not yet decided is a CLI argument-parsing
-library **vs.** a small hand-rolled parser — this is an open Phase 0 decision
+  library **vs.** a small hand-rolled parser — this is an open design decision
 item (see `cli-design.md` §5). systemd D-Bus interaction is planned via
 `sd-bus` (part of `libsystemd`) rather than a hand-rolled D-Bus client,
 because a from-scratch D-Bus implementation is a correctness/security risk
@@ -150,8 +150,8 @@ All fallible public APIs return `nizaw::Result<T>`, modeled as a
 - an optional `errno` value when the failure originated from a syscall
 
 Errors are never swallowed. Any internal function that ignores a possible
-failure must justify it in a code comment; CI/lint policy (Phase 10) will
-flag unchecked syscalls.
+failure must justify it in a code comment; CI/lint policy will flag unchecked
+syscalls.
 
 ## 9. Logging
 
@@ -163,11 +163,10 @@ includes secrets, credentials, or full environment dumps. The CLI's
 
 ## 10. Threading model
 
-Phase 0–8 modules are designed to be **synchronous and single-threaded by
+The modules are designed to be **synchronous and single-threaded by
 default** — process/storage/network enumeration are inherently bounded,
 one-shot filesystem/syscall operations, and introducing concurrency there
-would add complexity without a measured performance justification (violates
-the "don't chase performance without a technical reason" principle).
+would add complexity without a measured performance justification.
 `std::thread`/`std::mutex` are reserved for cases with a demonstrated need,
 e.g. a future `--watch` mode or the plugin loader guarding a shared registry.
 Where module state exists, it is instance-owned (no global mutable state),
@@ -190,17 +189,17 @@ onward, Nizaw follows semantic versioning on the public headers in
 `include/nizaw/`: patch = bug fixes only, minor = additive/non-breaking API,
 major = breaking. ABI stability (safe to swap the shared library without
 recompiling consumers) is a stated **goal for a post-1.0 milestone**, not a
-Phase 0 guarantee — see `api-design.md` §5 for what that will require
+See `api-design.md` §5 for what that will require
 (pimpl-heavy public classes, no virtual dispatch across the ABI boundary,
 frozen struct layouts, etc.).
 
-## 13. Open decisions carried out of Phase 0
+## 13. Open design decisions
 
 These are flagged rather than silently decided, per project instructions:
 
 1. CLI argument parsing: hand-rolled minimal parser vs. a small header-only
    third-party library. Recommendation and trade-offs in `cli-design.md` §5.
-2. Whether `service` module's Phase 5 scope needs `libsystemd`/`sd-bus` as a
+2. Whether the `service` module's scope needs `libsystemd`/`sd-bus` as a
    hard dependency, or whether raw D-Bus socket protocol handling (no
    dependency, more code, more risk) is preferred. Currently recommending
    `sd-bus` as optional (feature-gated) — see `dependency-policy.md` §4.
