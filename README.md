@@ -69,6 +69,7 @@ A GitHub-Wiki-ready documentation set is available under [docs/wiki](docs/wiki),
 - [docs/wiki/Architecture.md](docs/wiki/Architecture.md)
 - [docs/wiki/Development.md](docs/wiki/Development.md)
 - [docs/wiki/Troubleshooting.md](docs/wiki/Troubleshooting.md)
+- [docs/wiki/Integration.md](docs/wiki/Integration.md)
 
 ## Contributing
 

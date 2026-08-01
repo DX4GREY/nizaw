@@ -61,6 +61,7 @@ cmake --build build --parallel --target nizaw
 - [Architecture](Architecture)
 - [Development](Development)
 - [Troubleshooting](Troubleshooting)
+- [Integration](Integration)
 
 ## Project status
 
