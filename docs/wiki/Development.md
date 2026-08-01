@@ -52,6 +52,23 @@ ctest --test-dir build --output-on-failure
 ./build/nizaw --help
 ```
 
+## Why this project exists
+
+This project exists to make Linux system introspection easier to build and reuse from C++. Instead of manually parsing `/proc`, `/sys`, or systemd-related state from scratch, developers can rely on a small, structured API and a consistent CLI.
+
+## Feature matrix
+
+| Capability | Status | Notes |
+| --- | --- | --- |
+| System info | Implemented | Hostname, kernel, uptime, CPU, architecture |
+| Process inspection | Implemented | Process list and detailed inspect support |
+| Filesystem info | Implemented | Usage and metadata reporting |
+| Storage information | Implemented | Device listing and metadata |
+| Network info | Implemented | Interface and address reporting |
+| Service info | Implemented | Service listing/status visibility |
+| Security context | Implemented | UIDs, GIDs, groups, capabilities |
+| Plugin loading | Implemented | Dynamic discovery and loading of `.so` files |
+
 ## Contributing
 
 Contributions are welcome. Keep changes focused, add tests for behavioral changes, and update the documentation when public behavior or build steps change.

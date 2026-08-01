@@ -22,18 +22,18 @@ nizaw
 
 ## Module overview
 
-| Module | Responsibility |
-| --- | --- |
-| `core` | Error handling, logging, version metadata, platform helpers, environment utilities |
-| `system` | Hostname, kernel info, uptime, boot time, CPU count, page size |
-| `process` | Process enumeration and inspection via `/proc` |
-| `filesystem` | Disk usage and filesystem metadata |
-| `storage` | Block device enumeration and metadata |
-| `network` | Interface enumeration and address reporting |
-| `service` | Service listing and status introspection |
-| `security` | UID/GID/group and capability reporting |
-| `plugin` | Discovering and loading plugin modules |
-| `cli` | Command parsing, formatting, and exit code behavior |
+| Module | Responsibility | Why it exists |
+| --- | --- | --- |
+| `core` | Error handling, logging, version metadata, platform helpers, environment utilities | Provides the shared base layer for the rest of the framework |
+| `system` | Hostname, kernel info, uptime, boot time, CPU count, page size | Lets applications ask basic host questions in a structured way |
+| `process` | Process enumeration and inspection via `/proc` | Useful for debugging, monitoring, and process inventory |
+| `filesystem` | Disk usage and filesystem metadata | Useful for diagnostics and storage visibility |
+| `storage` | Block device enumeration and metadata | Gives visibility into disks, block devices, and storage topology |
+| `network` | Interface enumeration and address reporting | Helps inspect networking state without relying on shell wrappers |
+| `service` | Service listing and status introspection | Makes service state visible in a consistent format |
+| `security` | UID/GID/group and capability reporting | Useful for privilege and security context inspection |
+| `plugin` | Discovering and loading plugin modules | Enables extension without modifying the core build |
+| `cli` | Command parsing, formatting, and exit code behavior | Gives the project a user-friendly interface on top of the library |
 
 ## How it works
 

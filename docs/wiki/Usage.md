@@ -105,3 +105,23 @@ Compile this example by linking against the project targets in the same build tr
 - Host inspection in deployment scripts
 - Monitoring and inventory tools
 - Lightweight system introspection for C++ applications
+
+## Who should use this project
+
+This project is most useful for:
+
+- C++ developers who need Linux system information in a typed API
+- system administrators who want a simple CLI for quick inspection
+- DevOps or SRE teams building lightweight diagnostics tools
+- students and hobbyists learning how Linux system APIs can be wrapped in C++
+
+## Module-by-module summary
+
+- `system` → host and kernel facts
+- `process` → running process detail
+- `filesystem` → disk usage and file metadata
+- `storage` → block devices and storage characteristics
+- `network` → interfaces and addressing
+- `service` → service state and unit visibility
+- `security` → execution identity and capabilities
+- `plugin` → dynamic extension support
