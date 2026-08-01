@@ -1,0 +1,110 @@
+name: build-and-release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Tag untuk release (contoh: v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            name: linux-x86_64
+            cc: gcc
+            cxx: g++
+            cmake_extra: ''
+            run_tests: true
+          - arch: aarch64
+            name: linux-aarch64
+            cc: aarch64-linux-gnu-gcc
+            cxx: aarch64-linux-gnu-g++
+            cmake_extra: '-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64'
+            run_tests: false
+
+    env:
+      BUILD_TYPE: Release
+      BUILD_DIR: build-${{ matrix.arch }}
+      ARTIFACT_NAME: nizaw-${{ matrix.name }}.tar.gz
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config libsystemd-dev
+          if [ "${{ matrix.arch }}" = "aarch64" ]; then
+            sudo apt-get install -y g++-aarch64-linux-gnu gcc-aarch64-linux-gnu
+          fi
+
+      - name: Configure project
+        run: |
+          cmake -S . -B "${BUILD_DIR}" -G Ninja \
+            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+            -DCMAKE_C_COMPILER="${{ matrix.cc }}" \
+            -DCMAKE_CXX_COMPILER="${{ matrix.cxx }}" \
+            ${{ matrix.cmake_extra }}
+
+      - name: Build all targets
+        run: |
+          cmake --build "${BUILD_DIR}" --parallel
+
+      - name: Run tests
+        if: ${{ matrix.run_tests }}
+        run: |
+          ctest --test-dir "${BUILD_DIR}" --output-on-failure
+
+      - name: Package artifacts
+        run: |
+          mkdir -p dist/${{ matrix.name }}
+          cp "${BUILD_DIR}/nizaw" dist/${{ matrix.name }}/
+          cp "${BUILD_DIR}/nizaw_core_tests" dist/${{ matrix.name }}/
+          tar -czf "${ARTIFACT_NAME}" -C dist/${{ matrix.name }} .
+          ls -lh "${ARTIFACT_NAME}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ env.ARTIFACT_NAME }}
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Release ${{ env.RELEASE_TAG }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            dist/*/*.tar.gz

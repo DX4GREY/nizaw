@@ -1,5 +1,28 @@
+# Build directories
 build/
+build-*/
+
+# Editor and local files
+.vscode/
 *.swp
 *.swo
-.vscode/
 *.user
+*.tmp
+*.log
+
+# Release / packaging artifacts
+*.tar.gz
+*.zip
+/dist/
+
+# CMake / compiler generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Testing/
+Makefile
+
+# Local test outputs
+*.out
+*.bin
