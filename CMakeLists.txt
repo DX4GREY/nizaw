@@ -24,7 +24,15 @@ option(NIZAW_BUILD_SHARED "Build libnizaw as a shared library" OFF)
 option(NIZAW_ENABLE_WARNINGS "Enable strict compiler warnings" ON)
 option(NIZAW_ENABLE_ASAN "Enable AddressSanitizer" OFF)
 option(NIZAW_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
-option(NIZAW_ENABLE_SYSTEMD "Enable systemd/sd-bus backed nizaw::service" OFF)
+option(NIZAW_ENABLE_SYSTEMD "Enable systemd/sd-bus backed nizaw::service" ON)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SYSTEMD libsystemd sd-bus QUIET)
+if(SYSTEMD_FOUND)
+    message(STATUS "Found systemd/sd-bus support")
+elseif(NIZAW_ENABLE_SYSTEMD)
+    message(WARNING "NIZAW_ENABLE_SYSTEMD is ON but libsystemd/sd-bus was not found; building service module stub")
+endif()
 
 # --- Compiler warnings / sanitizers -----------------------------------------
 add_library(nizaw_project_options INTERFACE)
@@ -114,6 +122,34 @@ target_include_directories(nizaw_storage PUBLIC
 target_compile_features(nizaw_storage PUBLIC cxx_std_20)
 target_link_libraries(nizaw_storage PUBLIC nizaw::core nizaw_project_options)
 
+# --- nizaw::service ---------------------------------------------------------
+if(SYSTEMD_FOUND AND NIZAW_ENABLE_SYSTEMD)
+    add_library(nizaw_service
+        src/service/info.cpp
+    )
+    target_include_directories(nizaw_service PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+        ${SYSTEMD_INCLUDE_DIRS}
+    )
+    target_compile_features(nizaw_service PUBLIC cxx_std_20)
+    target_compile_options(nizaw_service PUBLIC ${SYSTEMD_CFLAGS_OTHER})
+    target_link_libraries(nizaw_service PUBLIC nizaw::core nizaw_project_options ${SYSTEMD_LIBRARIES})
+    target_compile_definitions(nizaw_service PUBLIC NIZAW_HAVE_SYSTEMD=1)
+else()
+    add_library(nizaw_service
+        src/service/unsupported.cpp
+    )
+    target_include_directories(nizaw_service PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    target_compile_features(nizaw_service PUBLIC cxx_std_20)
+    target_link_libraries(nizaw_service PUBLIC nizaw::core nizaw_project_options)
+    target_compile_definitions(nizaw_service PUBLIC NIZAW_HAVE_SYSTEMD=0)
+endif()
+add_library(nizaw::service ALIAS nizaw_service)
+
 # --- nizaw::network ---------------------------------------------------------
 add_library(nizaw_network
     src/network/info.cpp
@@ -143,10 +179,11 @@ if(NIZAW_BUILD_TESTS)
         tests/filesystem/test_filesystem.cpp
         tests/storage/test_storage.cpp
         tests/network/test_network.cpp
+        tests/service/test_service.cpp
     )
-    target_link_libraries(nizaw_core_tests PRIVATE nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw::storage nizaw::network nizaw_project_options)
+    target_link_libraries(nizaw_core_tests PRIVATE nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw::storage nizaw::network nizaw::service nizaw_project_options)
 
     add_test(NAME nizaw_core_tests COMMAND nizaw_core_tests)
 endif()
 
-message(STATUS "Nizaw ${PROJECT_VERSION} — Phase 6: core + system + process + filesystem + storage + network targets available")
+message(STATUS "Nizaw ${PROJECT_VERSION} — Phase 7: core + system + process + filesystem + storage + network + service targets available")
