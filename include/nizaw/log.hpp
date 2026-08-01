@@ -41,7 +41,7 @@ private:
     Logger() = default;
 
     LogLevel level_ = LogLevel::Info;
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
 };
 
 /// Formats `fmt`/`args` with `std::format` and writes it at `level` if the

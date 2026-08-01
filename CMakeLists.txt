@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(nizaw
-    VERSION 0.0.0
+    VERSION 0.1.0
     DESCRIPTION "Modern Linux System & CLI Framework written in C++20"
     LANGUAGES CXX
 )
@@ -17,14 +17,14 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 # --- Project options -------------------------------------------------------
-option(NIZAW_BUILD_TESTS       "Build unit/integration tests"        ON)
-option(NIZAW_BUILD_EXAMPLES    "Build example programs"              OFF)
-option(NIZAW_BUILD_CLI         "Build the nizaw CLI application"     ON)
-option(NIZAW_BUILD_SHARED      "Build libnizaw as a shared library"  OFF)
-option(NIZAW_ENABLE_WARNINGS   "Enable strict compiler warnings"     ON)
-option(NIZAW_ENABLE_ASAN       "Enable AddressSanitizer"             OFF)
-option(NIZAW_ENABLE_UBSAN      "Enable UndefinedBehaviorSanitizer"   OFF)
-option(NIZAW_ENABLE_SYSTEMD    "Enable systemd/sd-bus backed nizaw::service" ON)
+option(NIZAW_BUILD_TESTS "Build unit/integration tests" ON)
+option(NIZAW_BUILD_EXAMPLES "Build example programs" OFF)
+option(NIZAW_BUILD_CLI "Build the nizaw CLI application" OFF)
+option(NIZAW_BUILD_SHARED "Build libnizaw as a shared library" OFF)
+option(NIZAW_ENABLE_WARNINGS "Enable strict compiler warnings" ON)
+option(NIZAW_ENABLE_ASAN "Enable AddressSanitizer" OFF)
+option(NIZAW_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
+option(NIZAW_ENABLE_SYSTEMD "Enable systemd/sd-bus backed nizaw::service" OFF)
 
 # --- Compiler warnings / sanitizers -----------------------------------------
 add_library(nizaw_project_options INTERFACE)
@@ -46,9 +46,6 @@ if(NIZAW_ENABLE_UBSAN)
 endif()
 
 # --- nizaw::core -------------------------------------------------------------
-# Foundation module: Result<T>, Error, Logger, version metadata, platform
-# detection, environment utilities. Every other module depends on this one;
-# this one depends on nothing internal (see docs/architecture.md §6).
 add_library(nizaw_core
     src/core/error.cpp
     src/core/log.cpp
@@ -63,7 +60,20 @@ target_include_directories(nizaw_core PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 target_compile_features(nizaw_core PUBLIC cxx_std_20)
-target_link_libraries(nizaw_core PRIVATE nizaw_project_options)
+target_link_libraries(nizaw_core PUBLIC nizaw_project_options)
+
+# --- nizaw::system -----------------------------------------------------------
+add_library(nizaw_system
+    src/system/info.cpp
+)
+add_library(nizaw::system ALIAS nizaw_system)
+
+target_include_directories(nizaw_system PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_compile_features(nizaw_system PUBLIC cxx_std_20)
+target_link_libraries(nizaw_system PUBLIC nizaw::core nizaw_project_options)
 
 # --- Tests -------------------------------------------------------------------
 if(NIZAW_BUILD_TESTS)
@@ -76,10 +86,11 @@ if(NIZAW_BUILD_TESTS)
         tests/core/test_platform.cpp
         tests/core/test_version.cpp
         tests/core/test_log.cpp
+        tests/system/test_system.cpp
     )
-    target_link_libraries(nizaw_core_tests PRIVATE nizaw::core nizaw_project_options)
+    target_link_libraries(nizaw_core_tests PRIVATE nizaw::core nizaw::system nizaw_project_options)
 
     add_test(NAME nizaw_core_tests COMMAND nizaw_core_tests)
 endif()
 
-message(STATUS "Nizaw ${PROJECT_VERSION} — Phase 1: nizaw::core target available")
+message(STATUS "Nizaw ${PROJECT_VERSION} — Phase 2: core + system targets available")

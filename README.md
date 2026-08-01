@@ -2,28 +2,22 @@
 
 Modern Linux System & CLI Framework written in C++20
 
-> **Status:** Phase 0 — architecture and specification only. No buildable
-> modules exist yet. See `docs/architecture.md` for the full design and the
-> phased roadmap.
+> **Status:** Phase 0 architecture and Phase 1/2 implementation are now in place.
+> The repository now builds a core library and a system-info module, with automated tests.
 
-## Features (planned, by phase)
+## Features
 
-- Typed, `Result<T>`-based system introspection library (`libnizaw`):
-  system info, process enumeration/inspection, filesystem usage, block
-  storage enumeration and health, network interfaces, systemd services,
-  security/privilege identity.
-- A `nizaw` CLI built entirely on top of `libnizaw` — no logic exists in
-  the CLI that isn't also available as a library call.
-- Human-readable and `--json` output for every command.
-- A `.so`-based plugin system for third-party commands.
+- Typed `Result<T>`-based error propagation for Linux-facing APIs.
+- A lightweight core foundation with error codes, logging, platform detection, environment helpers, and version metadata.
+- A `nizaw::system` module that exposes host/kernel/uptime/system information via Linux APIs.
+- A testable build layout suitable for incremental module expansion.
 
 ## Architecture
 
-See [`docs/architecture.md`](docs/architecture.md) for the full design,
-[`docs/api-design.md`](docs/api-design.md) for public API signatures,
-[`docs/cli-design.md`](docs/cli-design.md) for the CLI command tree, and
-[`docs/dependency-policy.md`](docs/dependency-policy.md) for the dependency
-policy.
+See [docs/architecture.md](docs/architecture.md) for the full design,
+[docs/api-design.md](docs/api-design.md) for public API signatures,
+[docs/cli-design.md](docs/cli-design.md) for the CLI command tree, and
+[docs/dependency-policy.md](docs/dependency-policy.md) for the dependency policy.
 
 ## Requirements
 
@@ -31,37 +25,40 @@ policy.
 - C++20 compiler (GCC or Clang)
 - CMake ≥ 3.20, Ninja (recommended)
 
-## Installation / Building
-
-Not yet available — Phase 1 (Core Foundation) introduces the first
-buildable target. Once available:
+## Building
 
 ```bash
 cmake -S . -B build
 cmake --build build
-ctest --test-dir build
+ctest --test-dir build --output-on-failure
 ```
 
-## Quick Start / CLI Usage / Library Usage / Plugin Development
+## Quick Start
 
-To be written once the corresponding phases (1, 2–8, 9) land.
+```cpp
+#include <iostream>
+#include <nizaw/system.hpp>
+
+int main() {
+    auto result = nizaw::system::info();
+    if (!result) {
+        std::cerr << result.error().message() << '\n';
+        return 1;
+    }
+
+    std::cout << result.value().hostname << '\n';
+    return 0;
+}
+```
 
 ## Development
 
-This project is being built incrementally, phase by phase, per
-`docs/architecture.md`. Each phase adds one module, its tests, its CLI
-commands, and its documentation before the next phase begins.
-
-## Testing
-
-See `tests/` (populated starting Phase 1).
+The project is being built incrementally, phase by phase, per [docs/architecture.md](docs/architecture.md).
 
 ## Contributing
 
-See `CONTRIBUTING.md` (to be added alongside Phase 1).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-**TBD** — not yet decided. This is a project-owner decision to be made
-explicitly rather than assumed; flagging here rather than defaulting to a
-license silently.
+The repository is currently prepared for a future explicit license choice.
