@@ -163,6 +163,19 @@ target_include_directories(nizaw_network PUBLIC
 target_compile_features(nizaw_network PUBLIC cxx_std_20)
 target_link_libraries(nizaw_network PUBLIC nizaw::core nizaw_project_options)
 
+# --- nizaw::security --------------------------------------------------------
+add_library(nizaw_security
+    src/security/info.cpp
+)
+add_library(nizaw::security ALIAS nizaw_security)
+
+target_include_directories(nizaw_security PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_compile_features(nizaw_security PUBLIC cxx_std_20)
+target_link_libraries(nizaw_security PUBLIC nizaw::core nizaw_project_options)
+
 # --- Tests -------------------------------------------------------------------
 if(NIZAW_BUILD_TESTS)
     enable_testing()
@@ -180,10 +193,11 @@ if(NIZAW_BUILD_TESTS)
         tests/storage/test_storage.cpp
         tests/network/test_network.cpp
         tests/service/test_service.cpp
+        tests/security/test_security.cpp
     )
-    target_link_libraries(nizaw_core_tests PRIVATE nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw::storage nizaw::network nizaw::service nizaw_project_options)
+    target_link_libraries(nizaw_core_tests PRIVATE nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw::storage nizaw::network nizaw::service nizaw::security nizaw_project_options)
 
     add_test(NAME nizaw_core_tests COMMAND nizaw_core_tests)
 endif()
 
-message(STATUS "Nizaw ${PROJECT_VERSION} — Phase 7: core + system + process + filesystem + storage + network + service targets available")
+message(STATUS "Nizaw ${PROJECT_VERSION} — Phase 8: core + system + process + filesystem + storage + network + service + security targets available")
