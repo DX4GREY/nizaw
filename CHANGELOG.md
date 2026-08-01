@@ -5,3 +5,4 @@
 - Added Phase 0 architecture and dependency documentation.
 - Added Phase 1 core foundation with Result, Error, logging, platform detection, environment helpers, and version metadata.
 - Added Phase 2 system information module and tests.
+- Added Phase 3 process enumeration and inspection via /proc with resilient error handling.

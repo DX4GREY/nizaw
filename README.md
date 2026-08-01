@@ -10,6 +10,7 @@ Modern Linux System & CLI Framework written in C++20
 - Typed `Result<T>`-based error propagation for Linux-facing APIs.
 - A lightweight core foundation with error codes, logging, platform detection, environment helpers, and version metadata.
 - A `nizaw::system` module that exposes host/kernel/uptime/system information via Linux APIs.
+- A `nizaw::process` module that enumerates and inspects processes via /proc without crashing on vanished or permission-restricted entries.
 - A testable build layout suitable for incremental module expansion.
 
 ## Architecture
