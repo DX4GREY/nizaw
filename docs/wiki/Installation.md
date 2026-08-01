@@ -37,21 +37,24 @@ sudo pacman -S --needed base-devel cmake ninja pkgconf
 ```bash
 git clone https://github.com/DX4GREY/nizaw.git
 cd nizaw
-cmake -S . -B build -G Ninja
-cmake --build build --parallel
+cmake -S . -B build -G Ninja -DNIZAW_BUILD_CLI=ON
+cmake --build build --parallel --target nizaw
 ```
 
-## Run tests
+## Verify the build
 
 ```bash
 ctest --test-dir build --output-on-failure
-```
-
-## Run the CLI
-
-```bash
 ./build/nizaw --help
 ./build/nizaw system info
+```
+
+## Install locally (optional)
+
+If you want to expose the CLI from a standard location, you can install it into the chosen prefix:
+
+```bash
+cmake --install build --prefix /tmp/nizaw-install
 ```
 
 ## Notes about optional systemd support

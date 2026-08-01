@@ -5,8 +5,17 @@
 Install the required development packages for your distribution, then rebuild:
 
 ```bash
-cmake -S . -B build -G Ninja
+cmake -S . -B build -G Ninja -DNIZAW_BUILD_CLI=ON
 cmake --build build --parallel
+```
+
+## The CLI binary is not found
+
+If you get `no such file or directory` for `./build/nizaw`, make sure the CLI target is enabled during configuration:
+
+```bash
+cmake -S . -B build -DNIZAW_BUILD_CLI=ON
+cmake --build build --parallel --target nizaw
 ```
 
 ## `libsystemd` is not found

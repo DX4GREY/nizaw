@@ -49,3 +49,11 @@ Expected failures such as missing files, permission errors, or vanished processe
 ## Dependency policy
 
 The default posture is zero required third-party runtime dependencies. The project prefers the C++20 standard library and direct Linux APIs over external packages where possible.
+
+## Extension points
+
+- Add a new module by introducing a new target in `CMakeLists.txt`
+- Expose the new API through headers under `include/nizaw`
+- Implement the logic in `src/<module>/`
+- Add tests under `tests/<module>/`
+- Wire the command into the CLI if it should be user-facing

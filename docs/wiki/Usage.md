@@ -19,6 +19,7 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 
 ```bash
 ./build/nizaw system info
+./build/nizaw --version
 ```
 
 #### Process
@@ -74,6 +75,7 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 
 ```bash
 ./build/nizaw system info --json
+./build/nizaw process list --json
 ```
 
 ## Library usage example
@@ -90,9 +92,16 @@ int main() {
     }
 
     const auto& info = result.value();
-    std::cout << info.hostname << '\n';
+    std::cout << "Hostname: " << info.hostname << '\n';
     return 0;
 }
 ```
 
 Compile this example by linking against the project targets in the same build tree.
+
+## Typical use cases
+
+- Embedded diagnostics inside a Linux daemon
+- Host inspection in deployment scripts
+- Monitoring and inventory tools
+- Lightweight system introspection for C++ applications

@@ -10,15 +10,22 @@ Nizaw is a modern, modular Linux system and CLI framework written in C++20. It c
 - Enumerate storage devices and network interfaces
 - Inspect service units and security identity/capabilities
 - Load third-party plugins from `.so` files
+- Use the same APIs from a C++ application without going through the CLI
 
 ## Quick start
 
 ```bash
-cmake -S . -B build
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
+cmake -S . -B build -DNIZAW_BUILD_CLI=ON
+cmake --build build --parallel --target nizaw
 ./build/nizaw --help
 ```
+
+## Typical workflow
+
+1. Build the project
+2. Run one of the CLI commands
+3. Integrate the headers from `include/nizaw` into your own C++ application
+4. Use `nizaw::Result<T>`-based error handling for production-safe code
 
 ## Wiki pages
 
