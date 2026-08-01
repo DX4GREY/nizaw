@@ -94,10 +94,46 @@ jobs:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist
+
+      - name: Generate release notes
+        env:
+          RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          set -euo pipefail
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$RELEASE_TAG" ]; then
+            RANGE="${PREV_TAG}..${RELEASE_TAG}"
+          else
+            RANGE="HEAD"
+          fi
+
+          COMMITS=$(git log --no-merges --pretty=format:'- %h %s' "$RANGE" | head -n 15 || true)
+          if [ -z "$COMMITS" ]; then
+            COMMITS='- No commit history available'
+          fi
+
+          cat > release-notes.md <<EOF
+          ## Release ${RELEASE_TAG}
+
+          ### Build highlights
+          - Multi-architecture Linux binaries for x86_64 and aarch64
+          - Release archive includes headers, libraries, and CLI binary
+
+          ### Recent commits
+          ${COMMITS}
+          EOF
+
+          echo "Generated release notes:"
+          cat release-notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -106,6 +142,6 @@ jobs:
           name: Release ${{ env.RELEASE_TAG }}
           draft: false
           prerelease: false
-          generate_release_notes: true
+          body_path: release-notes.md
           files: |
             dist/*/*.tar.gz
