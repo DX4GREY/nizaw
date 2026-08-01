@@ -15,6 +15,7 @@ Modern Linux System & CLI Framework written in C++20
 - A `nizaw::storage` module that enumerates block devices from `/sys/block` and reports physical/logical block sizes, removable/read-only flags, rotational status, model, and vendor.
 - A `nizaw::network` module that enumerates interfaces and reports names, indexes, state, MAC address, MTU, flags, and IPv4/IPv6 addresses.
 - A `nizaw::security` module that reports process identity, supplemental groups, and effective Linux capabilities.
+- A `nizaw::plugin` module that discovers and loads third-party command plugins from `.so` artifacts.
 - A testable build layout suitable for incremental module expansion.
 
 ## Architecture

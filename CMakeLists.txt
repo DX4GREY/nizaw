@@ -176,9 +176,35 @@ target_include_directories(nizaw_security PUBLIC
 target_compile_features(nizaw_security PUBLIC cxx_std_20)
 target_link_libraries(nizaw_security PUBLIC nizaw::core nizaw_project_options)
 
+# --- nizaw::plugin ----------------------------------------------------------
+add_library(nizaw_plugin
+    src/plugin/info.cpp
+)
+add_library(nizaw::plugin ALIAS nizaw_plugin)
+
+target_include_directories(nizaw_plugin PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_compile_features(nizaw_plugin PUBLIC cxx_std_20)
+target_link_libraries(nizaw_plugin PUBLIC nizaw::core nizaw_project_options)
+
 # --- Tests -------------------------------------------------------------------
 if(NIZAW_BUILD_TESTS)
     enable_testing()
+
+    add_library(nizaw_test_plugin_fixture SHARED
+        tests/plugin/fixtures/test_plugin.cpp
+    )
+    set_target_properties(nizaw_test_plugin_fixture PROPERTIES
+        PREFIX ""
+        OUTPUT_NAME "test_plugin"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tests/plugin"
+    )
+    target_include_directories(nizaw_test_plugin_fixture PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    target_compile_features(nizaw_test_plugin_fixture PUBLIC cxx_std_20)
 
     add_executable(nizaw_core_tests
         tests/support/main.cpp
@@ -194,10 +220,13 @@ if(NIZAW_BUILD_TESTS)
         tests/network/test_network.cpp
         tests/service/test_service.cpp
         tests/security/test_security.cpp
+        tests/plugin/test_plugin.cpp
     )
-    target_link_libraries(nizaw_core_tests PRIVATE nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw::storage nizaw::network nizaw::service nizaw::security nizaw_project_options)
+    add_dependencies(nizaw_core_tests nizaw_test_plugin_fixture)
+    target_compile_definitions(nizaw_core_tests PRIVATE PLUGIN_FIXTURE_DIR="${CMAKE_CURRENT_BINARY_DIR}/tests/plugin")
+    target_link_libraries(nizaw_core_tests PRIVATE nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw::storage nizaw::network nizaw::service nizaw::security nizaw::plugin nizaw_project_options)
 
     add_test(NAME nizaw_core_tests COMMAND nizaw_core_tests)
 endif()
 
-message(STATUS "Nizaw ${PROJECT_VERSION} — Phase 8: core + system + process + filesystem + storage + network + service + security targets available")
+message(STATUS "Nizaw ${PROJECT_VERSION} — Phase 9: core + system + process + filesystem + storage + network + service + security + plugin targets available")

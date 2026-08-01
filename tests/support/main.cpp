@@ -12,6 +12,7 @@ int run_storage_tests();
 int run_network_tests();
 int run_service_tests();
 int run_security_tests();
+int run_plugin_tests();
 
 int main() {
     int failures = 0;
@@ -27,6 +28,7 @@ int main() {
     failures += run_network_tests();
     failures += run_service_tests();
     failures += run_security_tests();
+    failures += run_plugin_tests();
 
     if (failures != 0) {
         std::cerr << failures << " test(s) failed" << std::endl;
