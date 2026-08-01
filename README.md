@@ -60,6 +60,16 @@ int main() {
 
 See [docs/architecture.md](docs/architecture.md) for the full design and module boundaries.
 
+## Wiki
+
+A GitHub-Wiki-ready documentation set is available under [docs/wiki](docs/wiki), including:
+- [docs/wiki/Home.md](docs/wiki/Home.md)
+- [docs/wiki/Installation.md](docs/wiki/Installation.md)
+- [docs/wiki/Usage.md](docs/wiki/Usage.md)
+- [docs/wiki/Architecture.md](docs/wiki/Architecture.md)
+- [docs/wiki/Development.md](docs/wiki/Development.md)
+- [docs/wiki/Troubleshooting.md](docs/wiki/Troubleshooting.md)
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
