@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(nizaw
-    VERSION 1.0.0
+    VERSION 1.0.1
     DESCRIPTION "Modern Linux System & CLI Framework written in C++20"
     LANGUAGES CXX
 )
+
+include(GNUInstallDirs)
 
 if(NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 20)
@@ -242,5 +244,32 @@ if(NIZAW_BUILD_TESTS)
 
     add_test(NAME nizaw_core_tests COMMAND nizaw_core_tests)
 endif()
+
+# --- Installation -----------------------------------------------------------
+install(DIRECTORY include/nizaw
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+set(NIZAW_INSTALL_TARGETS
+    nizaw_core
+    nizaw_system
+    nizaw_process
+    nizaw_filesystem
+    nizaw_storage
+    nizaw_service
+    nizaw_network
+    nizaw_security
+    nizaw_plugin
+)
+
+if(NIZAW_BUILD_CLI)
+    list(APPEND NIZAW_INSTALL_TARGETS nizaw)
+endif()
+
+install(TARGETS ${NIZAW_INSTALL_TARGETS}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 
 message(STATUS "Nizaw ${PROJECT_VERSION} — core + system + process + filesystem + storage + network + service + security + plugin + cli targets available")

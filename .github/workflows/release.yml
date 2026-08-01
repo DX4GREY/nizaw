@@ -71,12 +71,13 @@ jobs:
         run: |
           ctest --test-dir "${BUILD_DIR}" --output-on-failure
 
+      - name: Install project to staging directory
+        run: |
+          cmake --install "${BUILD_DIR}" --prefix "${PWD}/dist/${{ matrix.name }}/pkg"
+
       - name: Package artifacts
         run: |
-          mkdir -p dist/${{ matrix.name }}
-          cp "${BUILD_DIR}/nizaw" dist/${{ matrix.name }}/
-          cp "${BUILD_DIR}/nizaw_core_tests" dist/${{ matrix.name }}/
-          tar -czf "${ARTIFACT_NAME}" -C dist/${{ matrix.name }} .
+          tar -czf "${ARTIFACT_NAME}" -C "${PWD}/dist/${{ matrix.name }}/pkg" .
           ls -lh "${ARTIFACT_NAME}"
 
       - name: Upload build artifact
