@@ -41,6 +41,28 @@ cmake -S . -B build -G Ninja -DNIZAW_BUILD_CLI=ON
 cmake --build build --parallel --target nizaw
 ```
 
+## Build options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `NIZAW_BUILD_CLI` | `ON` | Build the `nizaw` CLI executable |
+| `NIZAW_BUILD_TESTS` | `ON` | Build unit/integration tests |
+| `NIZAW_BUILD_EXAMPLES` | `OFF` | Build example programs |
+| `NIZAW_BUILD_SHARED` | `OFF` | Build `libnizaw` as a shared library |
+| `NIZAW_ENABLE_WARNINGS` | `ON` | Enable strict compiler warnings |
+| `NIZAW_ENABLE_ASAN` | `OFF` | Enable AddressSanitizer |
+| `NIZAW_ENABLE_UBSAN` | `OFF` | Enable UndefinedBehaviorSanitizer |
+| `NIZAW_ENABLE_SYSTEMD` | `ON` | Enable systemd/sd-bus backed `nizaw::service` |
+
+## Build examples (optional)
+
+```bash
+cmake -S . -B build -G Ninja -DNIZAW_BUILD_EXAMPLES=ON
+cmake --build build --parallel --target nizaw_example
+./build/examples/nizaw_example
+./build/examples/nizaw_example --json
+```
+
 ## Verify the build
 
 ```bash

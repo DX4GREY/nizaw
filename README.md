@@ -38,6 +38,14 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+To also build the example programs:
+
+```bash
+cmake -S . -B build -DNIZAW_BUILD_EXAMPLES=ON
+cmake --build build --parallel --target nizaw_example
+./build/examples/nizaw_example
+```
+
 ## Quick Start
 
 ```cpp

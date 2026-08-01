@@ -40,7 +40,23 @@ add_executable(my_app main.cpp)
 target_link_libraries(my_app PRIVATE ${NIZAW_CORE_LIB} ${NIZAW_SYSTEM_LIB})
 ```
 
-## 3. Example application
+## 3. Available CMake targets
+
+The top-level `CMakeLists.txt` exposes the following module targets:
+
+| Target | Header | Description |
+| --- | --- | --- |
+| `nizaw::core` | `nizaw/core/*.hpp` | Error handling, logging, platform detection, env, version |
+| `nizaw::system` | `nizaw/system.hpp` | Host/kernel/uptime/system information |
+| `nizaw::process` | `nizaw/process.hpp` | Process enumeration and inspection |
+| `nizaw::filesystem` | `nizaw/filesystem.hpp` | Disk usage and filesystem metadata |
+| `nizaw::storage` | `nizaw/storage.hpp` | Block device enumeration and metadata |
+| `nizaw::network` | `nizaw/network.hpp` | Interface enumeration and address reporting |
+| `nizaw::service` | `nizaw/service.hpp` | Service listing and status introspection |
+| `nizaw::security` | `nizaw/security.hpp` | UID/GID/group and capability reporting |
+| `nizaw::plugin` | `nizaw/plugin.hpp` | Plugin discovery and loading |
+
+## 4. Example application
 
 ```cpp
 #include <iostream>
@@ -67,7 +83,7 @@ int main() {
 }
 ```
 
-## 4. Build and run
+## 5. Build and run
 
 ```bash
 cmake -S . -B build
@@ -75,8 +91,9 @@ cmake --build build
 ./build/my_app
 ```
 
-## 5. Notes
+## 6. Notes
 
 - Use `nizaw::Result<T>` for fallible operations.
 - Prefer the library API for real application integration instead of calling the CLI from inside your program.
 - The CLI is mainly intended for manual use and scripting.
+- The `core` module is linked transitively by every other module, so you only need to link the modules whose APIs you call directly.

@@ -6,10 +6,10 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 
 ### Global flags
 
-- `--help` show usage
+- `--help` / `-h` show usage
 - `--version` show version info
-- `--json` emit JSON output
-- `--verbose` increase log verbosity
+- `--json` / `-j` emit JSON output
+- `--verbose` / `-v` increase log verbosity
 - `--quiet` suppress non-essential output
 - `--no-color` disable ANSI color output
 
@@ -55,6 +55,7 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 ```bash
 ./build/nizaw service list
 ./build/nizaw service status ssh
+./build/nizaw service inspect ssh
 ```
 
 #### Security
@@ -93,11 +94,38 @@ int main() {
 
     const auto& info = result.value();
     std::cout << "Hostname: " << info.hostname << '\n';
+    std::cout << "Kernel:   " << info.kernel_release << '\n';
+    std::cout << "Arch:     " << info.architecture << '\n';
     return 0;
 }
 ```
 
-Compile this example by linking against the project targets in the same build tree.
+Compile this example by linking against the project targets in the same build tree:
+
+```bash
+cmake -S . -B build -DNIZAW_BUILD_EXAMPLES=ON
+cmake --build build --parallel --target nizaw_example
+```
+
+## Core module usage
+
+The `nizaw::core` module provides error handling, logging, platform detection, environment helpers, and version metadata.
+
+```cpp
+#include <iostream>
+#include <nizaw/core/platform.hpp>
+#include <nizaw/core/version.hpp>
+
+int main() {
+    const auto version = nizaw::core::version();
+    std::cout << "Nizaw " << version.major << "." << version.minor << "." << version.patch << '\n';
+
+    const auto plat = nizaw::core::detect();
+    std::cout << "Distro: " << plat.distro_name << " (" << plat.distro_id << ")\n";
+    std::cout << "Systemd: " << (plat.has_systemd ? "yes" : "no") << '\n';
+    return 0;
+}
+```
 
 ## Typical use cases
 
@@ -117,6 +145,7 @@ This project is most useful for:
 
 ## Module-by-module summary
 
+- `core` → error handling, logging, platform detection, environment helpers, version metadata
 - `system` → host and kernel facts
 - `process` → running process detail
 - `filesystem` → disk usage and file metadata

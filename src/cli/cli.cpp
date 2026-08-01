@@ -33,12 +33,6 @@ struct Options {
     std::vector<std::string> args;
 };
 
-std::string to_lower(std::string_view value) {
-    std::string result(value);
-    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) { return std::tolower(c); });
-    return result;
-}
-
 std::string json_escape(std::string_view value) {
     std::string escaped;
     escaped.reserve(value.size());
@@ -80,31 +74,12 @@ std::string join_json_array(const std::vector<std::string>& items) {
     return result;
 }
 
-std::vector<std::string> split_tokens(std::string_view path) {
-    std::vector<std::string> result;
-    std::string current;
-    for (char ch : path) {
-        if (ch == ',' || ch == ';' || ch == ' ') {
-            if (!current.empty()) {
-                result.emplace_back(current);
-                current.clear();
-            }
-        } else {
-            current.push_back(ch);
-        }
-    }
-    if (!current.empty()) {
-        result.emplace_back(current);
-    }
-    return result;
-}
-
 void print_row(std::string_view label, std::string_view value) {
     std::cout << label << ": " << value << '\n';
 }
 
 void print_row(std::string_view label, bool value) {
-    print_row(label, value ? "true" : "false");
+    print_row(label, std::string_view(value ? "true" : "false"));
 }
 
 void print_error(const Error& error, bool json) {

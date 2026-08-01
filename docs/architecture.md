@@ -1,7 +1,7 @@
 # Nizaw — Architecture
 
 Status: Stable architecture and implementation
-Version: 0.1.0 (pre-release)
+Version: 1.0.2
 
 ## 1. Purpose
 
@@ -35,7 +35,7 @@ never an afterthought and always stays independently useful/embeddable.
 
 In scope:
 - Read-mostly system introspection: system info, process enumeration/
-  inspection, filesystem usage/info, block storage enumeration/health,
+  inspection, filesystem usage/info, block storage enumeration,
   network interface enumeration, systemd service listing/status, security
   identity/capabilities.
 - A plugin system for third-party command extension.
@@ -108,11 +108,11 @@ module APIs.
 | `system`      | Hostname, kernel info, arch, uptime, boot time, CPU count, page size  | `core`                |
 | `process`     | `/proc`-based process enumeration & inspection                        | `core`                |
 | `filesystem`  | `std::filesystem`-based usage/info, mount points, permissions          | `core`                |
-| `storage`     | Block device enumeration via `/sys/block`, `/dev`, ioctl; health telemetry | `core`, optionally `filesystem` for mount correlation |
+| `storage`     | Block device enumeration via `/sys/block`, `/dev`, ioctl               | `core`                |
 | `network`     | Interface enumeration via `getifaddrs`/ioctl/netlink, sysfs            | `core`                |
-| `service`     | systemd unit listing/status via D-Bus (with a backend-abstraction seam) | `core`, `process` (PID resolution) |
+| `service`     | systemd unit listing/status via D-Bus (with a backend-abstraction seam) | `core`                |
 | `security`    | UID/GID/groups/capabilities/privilege introspection                    | `core`                |
-| `plugin`      | Dynamic command loading (`.so`), API versioning, plugin registry       | `core`, `cli`         |
+| `plugin`      | Dynamic command loading (`.so`), API versioning, plugin registry       | `core`                |
 | `cli`         | Argument parsing, command tree, formatting (human + JSON), exit codes  | all of the above (as needed per command) |
 
 Each module is a **separate CMake target** so consumers can link only what
@@ -122,14 +122,12 @@ pull in `nizaw::network`).
 ## 7. Dependency policy (summary — full detail in `dependency-policy.md`)
 
 Default is zero third-party runtime dependencies. The C++20 standard library
-and Linux kernel APIs are preferred over any library. The only dependency
-under active consideration and not yet decided is a CLI argument-parsing
-  library **vs.** a small hand-rolled parser — this is an open design decision
-item (see `cli-design.md` §5). systemd D-Bus interaction is planned via
-`sd-bus` (part of `libsystemd`) rather than a hand-rolled D-Bus client,
-because a from-scratch D-Bus implementation is a correctness/security risk
-disproportionate to the module's value; this makes `libsystemd` an **optional**
-dependency gating only the `service` module.
+and Linux kernel APIs are preferred over any library. The CLI uses a
+hand-rolled minimal argument parser (see `cli-design.md` §5). systemd D-Bus
+interaction uses `sd-bus` (part of `libsystemd`) rather than a hand-rolled
+D-Bus client, because a from-scratch D-Bus implementation is a
+correctness/security risk disproportionate to the module's value; this makes
+`libsystemd` an **optional** dependency gating only the `service` module.
 
 ## 8. Error handling architecture
 
@@ -193,13 +191,14 @@ See `api-design.md` §5 for what that will require
 (pimpl-heavy public classes, no virtual dispatch across the ABI boundary,
 frozen struct layouts, etc.).
 
-## 13. Open design decisions
+## 13. Resolved design decisions
 
-These are flagged rather than silently decided, per project instructions:
+These were flagged as open during early design and have since been resolved:
 
-1. CLI argument parsing: hand-rolled minimal parser vs. a small header-only
-   third-party library. Recommendation and trade-offs in `cli-design.md` §5.
-2. Whether the `service` module's scope needs `libsystemd`/`sd-bus` as a
-   hard dependency, or whether raw D-Bus socket protocol handling (no
-   dependency, more code, more risk) is preferred. Currently recommending
-   `sd-bus` as optional (feature-gated) — see `dependency-policy.md` §4.
+1. CLI argument parsing: a hand-rolled minimal parser was chosen over a
+   third-party library, because the command tree is shallow and uniform
+   (see `cli-design.md` §5).
+2. The `service` module uses `libsystemd`/`sd-bus` as an optional,
+   feature-gated dependency (`NIZAW_ENABLE_SYSTEMD`, default ON). When
+   unavailable, a stub implementation is built so the rest of the project
+   still compiles (see `dependency-policy.md` §4).

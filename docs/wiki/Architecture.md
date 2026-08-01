@@ -9,6 +9,11 @@ Nizaw is organized around a simple rule: the CLI must not contain logic that the
 ```text
 nizaw
 ├── core
+│   ├── error
+│   ├── log
+│   ├── platform
+│   ├── env
+│   └── version
 ├── system
 ├── process
 ├── filesystem
@@ -24,7 +29,7 @@ nizaw
 
 | Module | Responsibility | Why it exists |
 | --- | --- | --- |
-| `core` | Error handling, logging, version metadata, platform helpers, environment utilities | Provides the shared base layer for the rest of the framework |
+| `core` | Error handling (`nizaw::Error`, `nizaw::ErrorCode`), logging (`nizaw::core::Logger`), platform detection (`nizaw::core::detect`), environment helpers (`nizaw::core::env`), version metadata (`nizaw::core::version`) | Provides the shared base layer for the rest of the framework |
 | `system` | Hostname, kernel info, uptime, boot time, CPU count, page size | Lets applications ask basic host questions in a structured way |
 | `process` | Process enumeration and inspection via `/proc` | Useful for debugging, monitoring, and process inventory |
 | `filesystem` | Disk usage and filesystem metadata | Useful for diagnostics and storage visibility |
@@ -46,9 +51,19 @@ nizaw
 
 Expected failures such as missing files, permission errors, or vanished processes are represented with `nizaw::Result<T>` instead of exceptions. This keeps the public API predictable and script-friendly.
 
+`nizaw::Error` carries a stable `ErrorCode` enum, a human-readable message, the source module, and an optional raw `errno` value. `Result<void>` is provided for fallible operations with no meaningful success value.
+
+## Logging
+
+The `nizaw::core::Logger` is a minimal, dependency-free logging sink with levels `Trace`, `Debug`, `Info`, `Warn`, `Error`, `Fatal`, and `Off`. It writes to stderr (stdout is reserved for command output/JSON) and is guarded by a mutex for thread safety. Convenience macros `NIZAW_LOG_TRACE`, `NIZAW_LOG_DEBUG`, `NIZAW_LOG_INFO`, `NIZAW_LOG_WARN`, `NIZAW_LOG_ERROR`, and `NIZAW_LOG_FATAL` are provided.
+
+## Platform detection
+
+`nizaw::core::detect()` reads `/etc/os-release` to report the distro id, name, and version, and detects systemd via the presence of `/run/systemd/system`. It never fails outright — unknown distro state is represented with empty fields rather than an error.
+
 ## Dependency policy
 
-The default posture is zero required third-party runtime dependencies. The project prefers the C++20 standard library and direct Linux APIs over external packages where possible.
+The default posture is zero required third-party runtime dependencies. The project prefers the C++20 standard library and direct Linux APIs over external packages where possible. The only optional dependency is `libsystemd`/`sd-bus` for the `service` module; when unavailable, a stub implementation is built instead.
 
 ## Extension points
 

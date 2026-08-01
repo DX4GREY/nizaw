@@ -18,9 +18,22 @@ cmake -S . -B build -DNIZAW_BUILD_CLI=ON
 cmake --build build --parallel --target nizaw
 ```
 
+## The example binary is not found
+
+If you get `no such file or directory` for `./build/examples/nizaw_example`, make sure the examples are enabled during configuration:
+
+```bash
+cmake -S . -B build -DNIZAW_BUILD_EXAMPLES=ON
+cmake --build build --parallel --target nizaw_example
+```
+
 ## `libsystemd` is not found
 
-This is usually not fatal. The project will build with a stub service implementation if systemd support is unavailable.
+This is usually not fatal. The project will build with a stub service implementation if systemd support is unavailable. You can also disable systemd support explicitly:
+
+```bash
+cmake -S . -B build -DNIZAW_ENABLE_SYSTEMD=OFF
+```
 
 ## The CLI says an option is unknown
 

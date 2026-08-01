@@ -28,8 +28,11 @@ public:
 
     ErrorCode code() const noexcept;
     const std::string& message() const noexcept;
-    std::string_view source() const noexcept;      // e.g. "storage", "process"
+    const std::string& source() const noexcept;      // e.g. "storage", "process"
     std::optional<int> errno_value() const noexcept;
+
+    static Error from_errno(int errno_value, ErrorCode code, std::string_view source,
+                            std::optional<std::string> message = std::nullopt);
 
 private:
     ErrorCode code_;
@@ -44,14 +47,18 @@ public:
     Result(T value);
     Result(Error error);
 
+    bool has_value() const noexcept;
     explicit operator bool() const noexcept;  // true if holds T
     const T& value() const&;                  // throws std::logic_error if error (programmer bug, not expected-path)
     T& value() &;
     T&& value() &&;
     const Error& error() const&;
+    T value_or(U&& fallback) const&;
+    const T& operator*() const&;
+    T& operator*() &;
+    const T* operator->() const;
+    T* operator->();
 
-    // monadic helpers, added only if a real use case appears (avoid overengineering):
-    // and_then, map, or_else
 private:
     std::variant<T, Error> storage_;
 };
@@ -67,11 +74,66 @@ should handle (missing device, permission denied, ESRCH, unsupported
 telemetry, malformed `/proc` entry, etc.) returns `Result<T>`. Functions that
 cannot fail don't wrap their return type.
 
-## 2. Module namespaces and initial signatures
+## 2. Module namespaces and current signatures
 
-These are the public surfaces planned for the current release. Each may be
-refined as the implementation evolves, but the API shape remains the
-primary contract.
+These are the public surfaces of the current release.
+
+### `nizaw::core`
+
+```cpp
+namespace nizaw::core {
+
+// --- error handling ---
+// (see section 1 above)
+
+// --- logging ---
+enum class LogLevel { Trace = 0, Debug, Info, Warn, Error, Fatal, Off };
+std::string_view to_string(LogLevel level) noexcept;
+
+class Logger {
+public:
+    static Logger& instance() noexcept;
+    void set_level(LogLevel level) noexcept;
+    LogLevel level() const noexcept;
+    void write(LogLevel level, std::string_view source, std::string_view message);
+};
+
+template <typename... Args>
+void log(LogLevel level, std::string_view source, std::format_string<Args...> fmt, Args&&... args);
+
+// Convenience macros: NIZAW_LOG_TRACE, NIZAW_LOG_DEBUG, NIZAW_LOG_INFO,
+// NIZAW_LOG_WARN, NIZAW_LOG_ERROR, NIZAW_LOG_FATAL
+
+// --- platform detection ---
+struct PlatformInfo {
+    std::string distro_id;       // "ubuntu", "debian", "arch", "fedora", "kali"
+    std::string distro_name;     // "Ubuntu 24.04.1 LTS"
+    std::string distro_version;  // "24.04"
+    bool has_systemd = false;
+};
+
+PlatformInfo detect() noexcept;
+
+// --- environment helpers ---
+namespace env {
+    std::optional<std::string> get(std::string_view name) noexcept;
+    std::string get_or(std::string_view name, std::string_view fallback) noexcept;
+    bool exists(std::string_view name) noexcept;
+}
+
+// --- version metadata ---
+inline constexpr unsigned kVersionMajor = 1;
+inline constexpr unsigned kVersionMinor = 0;
+inline constexpr unsigned kVersionPatch = 2;
+
+struct Version { unsigned major; unsigned minor; unsigned patch; };
+std::string version_string();
+Version version() noexcept;
+
+} // namespace nizaw::core
+```
+
+### `nizaw::system`
 
 ```cpp
 namespace nizaw::system {
@@ -82,136 +144,157 @@ struct SystemInfo {
     std::string kernel_release;
     std::string kernel_version;
     std::string architecture;
-    std::chrono::seconds uptime;
-    std::optional<std::chrono::system_clock::time_point> boot_time;
-    long page_size{};
-    unsigned cpu_count{};
+    std::string uptime;
+    std::string boot_time;
+    std::size_t page_size = 0;
+    std::size_t cpu_count = 0;
 };
 
 Result<SystemInfo> info();
-Result<std::chrono::seconds> uptime();
-Result<std::string> hostname();
-}
 
+} // namespace nizaw::system
+```
+
+### `nizaw::process`
+
+```cpp
 namespace nizaw::process {
 
-enum class ProcessState { Running, Sleeping, DiskSleep, Zombie, Stopped, Unknown };
-
 struct ProcessInfo {
-    pid_t pid{};
-    pid_t ppid{};
-    uid_t uid{};
-    gid_t gid{};
+    pid_t pid = 0;
+    pid_t ppid = 0;
+    uid_t uid = 0;
+    gid_t gid = 0;
+    std::string name;
+    std::string state;
     std::string command;
-    std::optional<std::filesystem::path> executable;
-    ProcessState state{ProcessState::Unknown};
-    unsigned thread_count{};
-    uint64_t memory_bytes{};
-    std::optional<std::chrono::microseconds> cpu_time;
-    std::chrono::system_clock::time_point start_time;
-    std::vector<std::string> arguments;  // empty if unavailable (permission/zombie)
+    std::string executable;
+    std::string arguments;
+    std::size_t threads = 0;
+    std::uint64_t memory_kb = 0;
+    double cpu_time_seconds = 0.0;
+    std::string start_time;
 };
 
 Result<std::vector<ProcessInfo>> list();
 Result<ProcessInfo> inspect(pid_t pid);
-}
 
+} // namespace nizaw::process
+```
+
+### `nizaw::filesystem`
+
+```cpp
 namespace nizaw::filesystem {
 
 struct DiskUsage {
-    uint64_t total_bytes{};
-    uint64_t free_bytes{};
-    uint64_t available_bytes{};
+    std::uint64_t total_bytes = 0;
+    std::uint64_t free_bytes = 0;
+    std::uint64_t available_bytes = 0;
+    std::uint64_t used_bytes = 0;
 };
 
-struct PathInfo {
-    std::filesystem::file_type type;
-    std::filesystem::perms permissions;
-    uid_t owner{};
-    gid_t group{};
-    std::optional<uint64_t> inode;
+struct EntryInfo {
+    std::string path;
+    std::string type;
+    std::string permissions;
+    std::string owner;
+    std::string group;
+    std::uintmax_t size_bytes = 0;
+    std::uintmax_t inode = 0;
+    bool exists = false;
+    bool is_symlink = false;
     std::string mount_point;
-    bool is_symlink{};
-    bool broken_symlink{};
 };
 
-Result<DiskUsage> disk_usage(const std::filesystem::path& path);
-Result<PathInfo> info(const std::filesystem::path& path);
-}
+Result<DiskUsage> usage(const std::filesystem::path& path);
+Result<EntryInfo> info(const std::filesystem::path& path);
 
+} // namespace nizaw::filesystem
+```
+
+### `nizaw::storage`
+
+```cpp
 namespace nizaw::storage {
 
-enum class DeviceKind { Nvme, Sata, MmcEmmc, UsbStorage, Virtual, Unknown };
+enum class DeviceType { Unknown, Disk, Partition, Loop, Ram };
 
-class Device {
-public:
-    const std::string& name() const;       // "nvme0n1"
-    const std::string& model() const;
-    const std::string& vendor() const;
-    uint64_t size_bytes() const;
-    uint64_t logical_block_size() const;
-    uint64_t physical_block_size() const;
-    bool removable() const;
-    bool read_only() const;
-    bool rotational() const;
-    DeviceKind kind() const;
-};
-
-enum class HealthStatus { Ok, Warning, Critical, Unsupported };
-
-struct StorageHealth {
-    HealthStatus status;
-    std::optional<std::string> unsupported_reason;  // set iff status == Unsupported
-    std::optional<uint64_t> power_on_hours;
-    std::optional<double> percentage_used;           // only when device actually reports it
+struct Device {
+    std::string name;
+    std::string sys_path;
+    std::string dev_node;
+    std::string model;
+    std::string vendor;
+    std::uint64_t size_bytes = 0;
+    std::uint32_t logical_block_size = 0;
+    std::uint32_t physical_block_size = 0;
+    bool removable = false;
+    bool read_only = false;
+    bool rotational = false;
+    DeviceType type = DeviceType::Unknown;
 };
 
 Result<std::vector<Device>> enumerate();
-Result<Device> info(const std::string& device_name);
-Result<StorageHealth> health(const std::string& device_name);
-}
+Result<Device> inspect(const std::string& device);
 
+} // namespace nizaw::storage
+```
+
+### `nizaw::network`
+
+```cpp
 namespace nizaw::network {
 
-struct Interface {
-    std::string name;
-    unsigned index{};
-    bool is_up{};
-    std::string mac_address;
-    unsigned mtu{};
-    std::vector<std::string> ipv4_addresses;
-    std::vector<std::string> ipv6_addresses;
+struct InterfaceAddress {
+    std::string family;
+    std::string address;
+    std::string netmask;
+    std::string broadcast;
 };
 
-Result<std::vector<Interface>> interfaces();
-Result<Interface> info(const std::string& interface_name);
-}
+struct InterfaceInfo {
+    std::string name;
+    unsigned index = 0;
+    std::string state;
+    std::string mac_address;
+    int mtu = 0;
+    std::vector<std::string> flags;
+    std::vector<InterfaceAddress> addresses;
+};
 
+Result<std::vector<InterfaceInfo>> list();
+Result<InterfaceInfo> inspect(std::string_view interface_name);
+
+} // namespace nizaw::network
+```
+
+### `nizaw::service`
+
+```cpp
 namespace nizaw::service {
-
-enum class ActiveState { Active, Inactive, Activating, Deactivating, Failed, Unknown };
-enum class LoadState { Loaded, NotFound, Error, Unknown };
 
 struct ServiceInfo {
     std::string name;
-    ActiveState active_state{};
-    LoadState load_state{};
-    bool enabled{};
-    std::optional<pid_t> main_pid;
     std::string description;
+    std::string load_state;
+    std::string active_state;
+    std::string sub_state;
+    bool loaded = false;
+    bool active = false;
+    std::optional<bool> enabled;
+    std::optional<pid_t> main_pid;
 };
 
-// Abstracted so a non-systemd backend could implement this interface later.
-class ServiceManager {
-public:
-    virtual ~ServiceManager() = default;
-    virtual Result<std::vector<ServiceInfo>> list() = 0;
-    virtual Result<ServiceInfo> status(const std::string& unit_name) = 0;
-};
+Result<std::vector<ServiceInfo>> list();
+Result<ServiceInfo> inspect(std::string_view unit_name);
 
-Result<std::unique_ptr<ServiceManager>> default_manager();  // systemd-backed by default when available
-}
+} // namespace nizaw::service
+```
 
+### `nizaw::security`
+
+```cpp
 namespace nizaw::security {
 
 struct Identity {
@@ -220,12 +303,56 @@ struct Identity {
     gid_t real_gid{};
     gid_t effective_gid{};
     std::vector<gid_t> groups;
-    bool is_root{};
+    bool is_root = false;
 };
 
 Result<Identity> identity();
 Result<std::vector<std::string>> capabilities();  // human-readable capability names
-}
+
+} // namespace nizaw::security
+```
+
+### `nizaw::plugin`
+
+```cpp
+namespace nizaw::plugin {
+
+inline constexpr const char* PluginApiVersion = "nizaw-plugin-v1";
+
+struct PluginDescriptor {
+    const char* name;
+    const char* version;
+    const char* description;
+    const char* api_version;
+    const char* commands;
+};
+
+struct PluginInfo {
+    std::string name;
+    std::string version;
+    std::string description;
+    std::string api_version;
+    std::vector<std::string> commands;
+    std::string path;
+};
+
+class Registry {
+public:
+    Registry() = default;
+    ~Registry();
+    Registry(const Registry&) = delete;
+    Registry& operator=(const Registry&) = delete;
+    Registry(Registry&&) noexcept = default;
+    Registry& operator=(Registry&&) noexcept = default;
+
+    Result<void> load_directory(std::string_view directory);
+    const std::vector<PluginInfo>& plugins() const noexcept;
+    bool empty() const noexcept;
+};
+
+Result<std::vector<PluginInfo>> discover(std::string_view directory);
+
+} // namespace nizaw::plugin
 ```
 
 ## 3. API design principles (recap, enforced across all modules)
@@ -235,18 +362,17 @@ Result<std::vector<std::string>> capabilities();  // human-readable capability n
 - All public types are const-correct; accessor methods are `const`.
 - No public API requires the caller to go through the CLI, and no CLI
   command does anything the library API can't also do standalone.
-- `Device`/`Interface`/`ServiceInfo` etc. are plain, copyable value-ish
-  types or thin accessor classes — not polymorphic unless there's a proven
-  need for substitutability (`ServiceManager` is the one deliberate
-  exception, because "swap the backend" is a named goal).
+- `Device`/`InterfaceInfo`/`ServiceInfo` etc. are plain, copyable value
+  types — not polymorphic unless there's a proven need for substitutability.
+- All fallible public APIs return `Result<T>`; functions that cannot fail
+  (e.g. `nizaw::core::detect()`) don't wrap their return type.
 
 ## 4. JSON output
 
-JSON serialization lives in the `cli` layer (or a thin `nizaw::core::json`
-helper used by `cli`), not baked into the domain structs themselves — domain
-modules stay serialization-agnostic so library consumers aren't forced to
-pull in a JSON dependency they don't want. See `cli-design.md` §4 for the
-exact JSON shape per command.
+JSON serialization lives in the `cli` layer, not baked into the domain
+structs themselves — domain modules stay serialization-agnostic so library
+consumers aren't forced to pull in a JSON dependency they don't want. See
+`cli-design.md` §4 for the exact JSON shape per command.
 
 ## 5. Shared library / ABI considerations (forward-looking, not a current
 commitment)
@@ -257,8 +383,7 @@ For a future ABI-stable release:
   fine for source compatibility but not ABI-stable across struct layout
   changes — this is an accepted trade-off pre-1.0).
 - No virtual dispatch across the shared-library boundary except through
-  explicitly-versioned interfaces (`ServiceManager` is designed with this in
-  mind — a version tag will be added before it's considered ABI-frozen).
+  explicitly-versioned interfaces.
 - `NIZAW_BUILD_SHARED` (CMake option) builds `libnizaw.so`; a static build
   remains supported and is the default for the CLI binary itself, to keep
   `nizaw` a self-contained executable.

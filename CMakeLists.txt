@@ -205,6 +205,11 @@ if(NIZAW_BUILD_CLI)
     target_link_libraries(nizaw PUBLIC nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw::storage nizaw::network nizaw::service nizaw::security nizaw::plugin nizaw_project_options)
 endif()
 
+# --- Examples ----------------------------------------------------------------
+if(NIZAW_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
 # --- Tests -------------------------------------------------------------------
 if(NIZAW_BUILD_TESTS)
     enable_testing()

@@ -5,10 +5,22 @@
 ```text
 CMakeLists.txt
 README.md
-include/nizaw/        # public headers
-src/                  # implementation files
-src/cli/              # CLI entry point and dispatch
-tests/                # unit and integration tests
+include/nizaw/          # public headers
+include/nizaw/core/     # core module public headers (error, log, platform, env, version)
+src/                    # implementation files
+src/cli/                # CLI entry point and dispatch
+src/core/               # core module implementation
+src/system/             # system module implementation
+src/process/            # process module implementation
+src/filesystem/         # filesystem module implementation
+src/storage/            # storage module implementation
+src/network/            # network module implementation
+src/service/            # service module implementation
+src/security/           # security module implementation
+src/plugin/             # plugin module implementation
+examples/               # example programs
+tests/                  # unit and integration tests
+docs/                   # design and wiki documentation
 ```
 
 ## Build locally
@@ -17,6 +29,14 @@ tests/                # unit and integration tests
 cmake -S . -B build -G Ninja -DNIZAW_BUILD_CLI=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
+```
+
+## Build examples
+
+```bash
+cmake -S . -B build -G Ninja -DNIZAW_BUILD_EXAMPLES=ON
+cmake --build build --parallel --target nizaw_example
+./build/examples/nizaw_example
 ```
 
 ## Add a new module
@@ -34,6 +54,8 @@ ctest --test-dir build --output-on-failure
 - Avoid shelling out to external commands when a Linux API exists
 - Keep the CLI thin; put logic in the library layer
 - Favor clear module boundaries over cross-module shortcuts
+- Use `NIZAW_LOG_*` macros for diagnostics instead of raw `std::cerr` in library code
+- Use `nizaw::Error::from_errno` when wrapping syscall failures
 
 ## Testing
 
@@ -60,6 +82,11 @@ This project exists to make Linux system introspection easier to build and reuse
 
 | Capability | Status | Notes |
 | --- | --- | --- |
+| Core error handling | Implemented | `nizaw::Error`, `nizaw::ErrorCode`, `Result<T>` |
+| Logging | Implemented | `nizaw::core::Logger` with level filtering |
+| Platform detection | Implemented | `/etc/os-release` parsing, systemd detection |
+| Environment helpers | Implemented | `nizaw::core::env::get`, `get_or`, `exists` |
+| Version metadata | Implemented | `nizaw::core::version()` |
 | System info | Implemented | Hostname, kernel, uptime, CPU, architecture |
 | Process inspection | Implemented | Process list and detailed inspect support |
 | Filesystem info | Implemented | Usage and metadata reporting |

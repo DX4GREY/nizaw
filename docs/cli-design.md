@@ -7,10 +7,7 @@ Status: Stable command-line interface design
 ```
 nizaw
 ├── system
-│   ├── info
-│   ├── uptime
-│   ├── hostname
-│   └── kernel
+│   └── info
 │
 ├── process
 │   ├── list
@@ -22,8 +19,7 @@ nizaw
 │
 ├── storage
 │   ├── list
-│   ├── info <DEVICE>
-│   └── health <DEVICE>
+│   └── info <DEVICE>
 │
 ├── network
 │   ├── interfaces
@@ -36,11 +32,10 @@ nizaw
 │
 ├── security
 │   ├── identity
-│   ├── capabilities
-│   └── check
+│   └── capabilities
 │
 └── plugins
-    └── list
+    └── list [DIRECTORY]
 ```
 
 Each leaf command maps 1:1 onto a library call (see `api-design.md` §2) —
@@ -50,12 +45,12 @@ exit code. No leaf command computes anything the library doesn't expose.
 ## 2. Global flags
 
 ```
---help              show help and exit
---version            show version and exit
---verbose            increase log verbosity (repeatable: -v, -vv)
---quiet              suppress non-essential output
---json               emit machine-readable JSON instead of human-readable text
---no-color           disable ANSI color in human-readable output
+--help / -h        show help and exit
+--version          show version and exit
+--verbose / -v     increase log verbosity
+--quiet            suppress non-essential output
+--json / -j        emit machine-readable JSON instead of human-readable text
+--no-color         disable ANSI color in human-readable output
 ```
 
 Global flags are parsed before subcommand dispatch and apply uniformly; no
@@ -69,13 +64,15 @@ words like `active`/`inactive`, never for structural decoration):
 ```
 $ nizaw system info
 
-System
-────────────────────────────
-Hostname       workstation
-Kernel         6.14.x
-Architecture   x86_64
-Uptime         2d 04h 12m
-CPU Cores      8
+Hostname:       workstation
+Kernel:         Linux
+Kernel release: 6.14.x
+Kernel version: #1 SMP ...
+Architecture:   x86_64
+Uptime:         2d 04h 12m
+Boot time:      2026-07-29 08:11:00
+Page size:      4096
+CPU count:      8
 ```
 
 `--no-color` strips ANSI entirely (also auto-detected when stdout is not a
@@ -97,8 +94,8 @@ $ nizaw system info --json
   "kernel_release": "6.14.0",
   "kernel_version": "#1 SMP ...",
   "architecture": "x86_64",
-  "uptime_seconds": 187920,
-  "boot_time": "2026-07-29T08:11:00Z",
+  "uptime": "2d 04h 12m",
+  "boot_time": "2026-07-29 08:11:00",
   "page_size": 4096,
   "cpu_count": 8
 }
@@ -117,44 +114,24 @@ On error, JSON mode emits a single error object to stdout (not stderr, so
 }
 ```
 
-## 5. Argument parsing: open decision
+## 5. Argument parsing
 
-Two options were considered for argument parsing:
-
-**Option A — hand-rolled minimal parser** (recommended default)
-- Pros: zero dependency, full control over `--json`/exit-code conventions,
-  trivial to keep dependency-light per project policy.
-- Cons: more code to write/maintain ourselves; subcommand help text
-  generation has to be built by hand.
-
-**Option B — a small header-only third-party parser** (e.g. CLI11)
-- Pros: mature help/usage generation, less boilerplate.
-- Cons: violates the "avoid dependency unless std lib is truly insufficient"
-  policy for something a ~300-line hand-rolled parser can cover, given
-  Nizaw's command tree is only 2 levels deep and flags are simple.
-
-Recommendation: **Option A**, because the command tree is shallow and
-uniform (module → subcommand → optional single positional arg), which is
-exactly the case a minimal hand-rolled parser handles well without pulling
-in a dependency. This implementation uses a hand-rolled parser for simplicity
-and dependency minimalism.
+The CLI uses a hand-rolled minimal parser. This was chosen because the
+command tree is shallow and uniform (module → subcommand → optional single
+positional arg), which is exactly the case a minimal hand-rolled parser
+handles well without pulling in a dependency.
 
 ## 6. Exit codes
 
-```cpp
-enum class ExitCode : int {
-    Success            = 0,
-    GeneralError       = 1,
-    InvalidArguments    = 2,
-    PermissionDenied    = 3,
-    ResourceUnavailable = 4,
-    Unsupported         = 5,
-};
-```
+The CLI uses the following exit codes:
 
-Mapping from `nizaw::ErrorCode` (library) to `ExitCode` (CLI) is a single,
-centralized table in the `cli` module — domain modules never know about
-exit codes, only about `ErrorCode`.
+- `0` — success
+- `1` — general error (library call returned an `Error`)
+- `2` — invalid arguments or unknown/incomplete command
+
+Mapping from `nizaw::ErrorCode` (library) to exit codes is handled in the
+`cli` module — domain modules never know about exit codes, only about
+`ErrorCode`.
 
 ## 7. Privileged operations
 
@@ -164,5 +141,4 @@ release. If/when `service start|stop|enable|disable` are added
 (explicitly deferred — see `architecture.md` §4 Non-goals), they will
 require an interactive confirmation prompt by default and a `--yes` flag to
 skip it non-interactively, plus a capability/permission pre-check that fails
-closed with `ExitCode::PermissionDenied` rather than attempting the syscall
-and letting the kernel reject it.
+closed rather than attempting the syscall and letting the kernel reject it.
