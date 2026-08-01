@@ -7,6 +7,7 @@ int run_core_version_tests();
 int run_core_log_tests();
 int run_system_info_tests();
 int run_process_tests();
+int run_filesystem_tests();
 
 int main() {
     int failures = 0;
@@ -17,6 +18,7 @@ int main() {
     failures += run_core_log_tests();
     failures += run_system_info_tests();
     failures += run_process_tests();
+    failures += run_filesystem_tests();
 
     if (failures != 0) {
         std::cerr << failures << " test(s) failed" << std::endl;

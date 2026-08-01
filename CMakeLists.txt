@@ -88,6 +88,19 @@ target_include_directories(nizaw_process PUBLIC
 target_compile_features(nizaw_process PUBLIC cxx_std_20)
 target_link_libraries(nizaw_process PUBLIC nizaw::core nizaw_project_options)
 
+# --- nizaw::filesystem ------------------------------------------------------
+add_library(nizaw_filesystem
+    src/filesystem/info.cpp
+)
+add_library(nizaw::filesystem ALIAS nizaw_filesystem)
+
+target_include_directories(nizaw_filesystem PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_compile_features(nizaw_filesystem PUBLIC cxx_std_20)
+target_link_libraries(nizaw_filesystem PUBLIC nizaw::core nizaw_project_options)
+
 # --- Tests -------------------------------------------------------------------
 if(NIZAW_BUILD_TESTS)
     enable_testing()
@@ -101,8 +114,9 @@ if(NIZAW_BUILD_TESTS)
         tests/core/test_log.cpp
         tests/system/test_system.cpp
         tests/process/test_process.cpp
+        tests/filesystem/test_filesystem.cpp
     )
-    target_link_libraries(nizaw_core_tests PRIVATE nizaw::core nizaw::system nizaw::process nizaw_project_options)
+    target_link_libraries(nizaw_core_tests PRIVATE nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw_project_options)
 
     add_test(NAME nizaw_core_tests COMMAND nizaw_core_tests)
 endif()
