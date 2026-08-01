@@ -7,3 +7,4 @@
 - Added Phase 2 system information module and tests.
 - Added Phase 3 process enumeration and inspection via /proc with resilient error handling.
 - Added Phase 4 filesystem usage and metadata inspection with std::filesystem and Linux stat-backed error handling.
+- Added Phase 5 storage enumeration for block devices under /sys/block with size, queue, and device metadata.
