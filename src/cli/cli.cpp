@@ -12,7 +12,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <iostream>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <string_view>
