@@ -10,11 +10,11 @@ namespace nizaw::core {
 /// build generates this header's values in a later phase via
 /// `configure_file`; for Phase 1 they are set directly here to match
 /// `CMakeLists.txt`'s `project()` call).
-inline constexpr unsigned kVersionMajor = 0;
+inline constexpr unsigned kVersionMajor = 1;
 inline constexpr unsigned kVersionMinor = 0;
 inline constexpr unsigned kVersionPatch = 0;
 
-/// Human-readable version string, e.g. "0.0.0".
+/// Human-readable version string, e.g. "1.0.0".
 [[nodiscard]] std::string version_string();
 
 struct Version {
