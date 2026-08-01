@@ -13,6 +13,7 @@ Modern Linux System & CLI Framework written in C++20
 - A `nizaw::process` module that enumerates and inspects processes via /proc without crashing on vanished or permission-restricted entries.
 - A `nizaw::filesystem` module that reports disk usage and filesystem metadata, including permissions, ownership, size, and symlink awareness.
 - A `nizaw::storage` module that enumerates block devices from `/sys/block` and reports physical/logical block sizes, removable/read-only flags, rotational status, model, and vendor.
+- A `nizaw::network` module that enumerates interfaces and reports names, indexes, state, MAC address, MTU, flags, and IPv4/IPv6 addresses.
 - A testable build layout suitable for incremental module expansion.
 
 ## Architecture
