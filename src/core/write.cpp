@@ -7,11 +7,14 @@
 #include <cstdint>
 #include <format>
 #include <fstream>
+#include <sys/types.h>
+#include <unistd.h>
+
+#ifdef __linux__
 #include <linux/capability.h>
 #include <sys/capability.h>
 #include <sys/prctl.h>
-#include <sys/types.h>
-#include <unistd.h>
+#endif
 
 namespace nizaw::core {
 

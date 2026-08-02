@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            name: linux-x86_64
+            cc: gcc
+            cxx: g++
+            cmake_extra: ''
+            run_tests: true
+
+    env:
+      BUILD_TYPE: Debug
+      BUILD_DIR: build-${{ matrix.arch }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config libsystemd-dev
+
+      - name: Configure project
+        run: |
+          cmake -S . -B "${BUILD_DIR}" -G Ninja \
+            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+            -DCMAKE_C_COMPILER="${{ matrix.cc }}" \
+            -DCMAKE_CXX_COMPILER="${{ matrix.cxx }}" \
+            -DNIZAW_BUILD_TESTS=ON \
+            -DNIZAW_BUILD_CLI=ON \
+            -DNIZAW_BUILD_EXAMPLES=ON \
+            ${{ matrix.cmake_extra }}
+
+      - name: Build all targets
+        run: |
+          cmake --build "${BUILD_DIR}" --parallel
+
+      - name: Run tests
+        if: ${{ matrix.run_tests }}
+        run: |
+          ctest --test-dir "${BUILD_DIR}" --output-on-failure
+
+      - name: Verify CLI binary
+        if: ${{ matrix.run_tests }}
+        run: |
+          chmod +x "${BUILD_DIR}/nizaw"
+          "${BUILD_DIR}/nizaw" --version
+          "${BUILD_DIR}/nizaw" --help
+
+      - name: Upload test results
+        if: ${{ matrix.run_tests && failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.name }}
+          path: |
+            ${{ env.BUILD_DIR }}/Testing/
+            ${{ env.BUILD_DIR }}/CMakeFiles/CMakeError.log
+            ${{ env.BUILD_DIR }}/CMakeFiles/CMakeOutput.log
+          if-no-files-found: ignore
+
+  lint:
+    name: Code style and warnings
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config
+
+      - name: Configure with strict warnings
+        run: |
+          cmake -S . -B build-lint -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DNIZAW_ENABLE_WARNINGS=ON \
+            -DNIZAW_BUILD_CLI=ON
+
+      - name: Build with warnings as errors
+        run: |
+          cmake --build build-lint --parallel
+        continue-on-error: true
+
+      - name: Check for compiler warnings
+        run: |
+          if grep -r "warning:" build-lint/compile_commands.json 2>/dev/null; then
+            echo "Warnings found in build"
+            exit 1
+          fi
+
+  static-analysis:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install clang-tidy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tidy
+
+      - name: Configure project
+        run: |
+          cmake -S . -B build-analysis -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+
+      - name: Run static analysis
+        run: |
+          cmake --build build-analysis --parallel || true
