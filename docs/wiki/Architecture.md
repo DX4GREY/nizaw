@@ -23,6 +23,8 @@ nizaw
 ├── security
 ├── plugin
 └── cli
+
+(10 modules total)
 ```
 
 ## Module overview
@@ -32,13 +34,13 @@ nizaw
 | `core` | Error handling (`nizaw::Error`, `nizaw::ErrorCode`), logging (`nizaw::core::Logger`), platform detection (`nizaw::core::detect`), environment helpers (`nizaw::core::env`), version metadata (`nizaw::core::version`) | Provides the shared base layer for the rest of the framework |
 | `system` | Hostname, kernel info, uptime, boot time, CPU count, page size | Lets applications ask basic host questions in a structured way |
 | `process` | Process enumeration and inspection via `/proc` | Useful for debugging, monitoring, and process inventory |
-| `filesystem` | Disk usage and filesystem metadata | Useful for diagnostics and storage visibility |
-| `storage` | Block device enumeration and metadata | Gives visibility into disks, block devices, and storage topology |
-| `network` | Interface enumeration and address reporting | Helps inspect networking state without relying on shell wrappers |
-| `service` | Service listing and status introspection | Makes service state visible in a consistent format |
+| `filesystem` | Disk usage, filesystem metadata, permissions, ownership, symlinks | Useful for diagnostics and storage visibility |
+| `storage` | Block device enumeration and metadata from `/sys/block` | Gives visibility into disks, block devices, and storage topology |
+| `network` | Interface enumeration and address reporting via `getifaddrs`/ioctl/netlink | Helps inspect networking state without relying on shell wrappers |
+| `service` | systemd unit listing/status via D-Bus | Makes service state visible in a consistent format |
 | `security` | UID/GID/group and capability reporting | Useful for privilege and security context inspection |
-| `plugin` | Discovering and loading plugin modules | Enables extension without modifying the core build |
-| `cli` | Command parsing, formatting, and exit code behavior | Gives the project a user-friendly interface on top of the library |
+| `plugin` | Plugin discovery and dynamic loading from `.so` files | Enables extension without modifying the core build |
+| `cli` | Complete command-line application with human-readable and JSON output | Gives the project a user-friendly interface on top of the library |
 
 ## How it works
 
@@ -63,7 +65,7 @@ The `nizaw::core::Logger` is a minimal, dependency-free logging sink with levels
 
 ## Dependency policy
 
-The default posture is zero required third-party runtime dependencies. The project prefers the C++20 standard library and direct Linux APIs over external packages where possible. The only optional dependency is `libsystemd`/`sd-bus` for the `service` module; when unavailable, a stub implementation is built instead.
+The default posture is zero required third-party runtime dependencies. The project prefers the C++20 standard library and direct Linux APIs over external packages where possible. The only optional dependency is `libsystemd`/`sd-bus` for the `service` module; when unavailable, a stub implementation is built instead. The CLI uses a hand-rolled minimal argument parser to avoid adding a dependency for a shallow command tree. The project uses `dlopen`/`dlfcn.h` (part of glibc) for the plugin system, which is a base-system Linux API rather than a third-party dependency.
 
 ## Extension points
 
@@ -72,3 +74,11 @@ The default posture is zero required third-party runtime dependencies. The proje
 - Implement the logic in `src/<module>/`
 - Add tests under `tests/<module>/`
 - Wire the command into the CLI if it should be user-facing
+
+## Build options
+
+- `NIZAW_BUILD_CLI=ON` (default) - Build the nizaw CLI executable
+- `NIZAW_BUILD_TESTS=ON` (default) - Build unit/integration tests
+- `NIZAW_BUILD_EXAMPLES=OFF` - Build example programs
+- `NIZAW_ENABLE_SYSTEMD=ON` (default) - Enable systemd-backed service module
+- `NIZAW_BUILD_SHARED=OFF` - Build libnizaw as a shared library

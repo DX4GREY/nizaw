@@ -1,6 +1,6 @@
 # Nizaw Wiki
 
-Nizaw is a modern, modular Linux system and CLI framework written in C++20. It combines a reusable C++ library with a script-friendly CLI for system introspection, process inspection, storage and network reporting, service metadata, security context, and plugin discovery.
+Nizaw is a modern, modular Linux system and CLI framework written in C++20. It combines a reusable C++ library with a script-friendly CLI for system introspection, process inspection, filesystem and storage reporting, network information, service status, security context, and plugin discovery.
 
 ## Project purpose
 
@@ -17,7 +17,7 @@ Nizaw is useful when you want to:
 
 - inspect the host environment from a C++ application
 - build a small admin tool without writing low-level parsing code from scratch
-- collect process, filesystem, storage, network, and service information in one place
+- collect process, filesystem, storage, network, service, and security information in one place
 - create scriptable system diagnostics that work consistently across Linux distros
 - build extensions or plugins on top of the same core platform
 
@@ -26,9 +26,11 @@ Nizaw is useful when you want to:
 - Query host and kernel details with `nizaw system info`
 - Inspect running processes with `nizaw process list` and `nizaw process inspect <PID>`
 - Check filesystem usage and metadata with `nizaw fs usage <PATH>` and `nizaw fs info <PATH>`
-- Enumerate storage devices and network interfaces
-- Inspect service units and security identity/capabilities
-- Load third-party plugins from `.so` files
+- List storage devices with `nizaw storage list` and inspect with `nizaw storage info <DEVICE>`
+- List network interfaces with `nizaw network interfaces` and inspect with `nizaw network info <IFACE>`
+- List systemd services with `nizaw service list` and inspect with `nizaw service status <UNIT>`
+- Get security identity with `nizaw security identity` and capabilities with `nizaw security capabilities`
+- Discover and load third-party plugins with `nizaw plugins list [DIRECTORY]`
 - Use the same APIs from a C++ application without going through the CLI
 
 ## Typical use cases
@@ -65,4 +67,27 @@ cmake --build build --parallel --target nizaw
 
 ## Project status
 
-The project currently targets Linux systems with C++20 and builds a modular library plus a CLI executable. The default build includes the core modules, tests, and the `nizaw` CLI. Examples can be enabled with `-DNIZAW_BUILD_EXAMPLES=ON`.
+**Version:** 1.0.2
+
+The project currently targets Linux x86_64 systems with C++20 and builds a complete modular library plus a CLI executable. The default build includes all modules (core, system, process, filesystem, storage, network, service, security, plugin), tests, and the `nizaw` CLI. Examples can be enabled with `-DNIZAW_BUILD_EXAMPLES=ON`.
+
+### Available modules
+
+- **core** - Error handling, logging, platform detection, environment helpers, version metadata
+- **system** - Hostname, kernel info, uptime, boot time, CPU count, page size
+- **process** - Process enumeration and inspection via /proc
+- **filesystem** - Disk usage and filesystem metadata
+- **storage** - Block device enumeration and metadata from /sys/block
+- **network** - Interface enumeration and address reporting
+- **service** - systemd unit listing and status via D-Bus
+- **security** - UID/GID/group and capability reporting
+- **plugin** - Plugin discovery and dynamic loading from .so files
+- **cli** - Complete command-line application with human-readable and JSON output
+
+### Build options
+
+- `NIZAW_BUILD_CLI=ON` (default) - Build the nizaw CLI executable
+- `NIZAW_BUILD_TESTS=ON` (default) - Build unit/integration tests
+- `NIZAW_BUILD_EXAMPLES=OFF` - Build example programs
+- `NIZAW_ENABLE_SYSTEMD=ON` (default) - Enable systemd-backed service module
+- `NIZAW_BUILD_SHARED=OFF` - Build libnizaw as a shared library

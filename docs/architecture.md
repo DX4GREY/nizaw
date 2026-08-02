@@ -68,29 +68,33 @@ Explicitly **out of scope** for the foreseeable roadmap (see Non-goals).
 ## 5. High-level architecture
 
 ```
-                    NIZAW
-                      │
-             ┌────────┴────────┐
-             │                 │
-          Library             CLI
-             │                 │
-      ┌──────┼──────┐          │
-      │      │      │          │
-    System Process Storage   Commands
-      │      │      │          │
-      └──────┼──────┘          │
-             │                 │
-             └────────┬────────┘
-                      │
-              Linux Kernel APIs
-                      │
-        ┌─────────────┼─────────────┐
-        │             │             │
-       /proc         /sys          /dev
-        │             │             │
-        └─────────────┼─────────────┘
-                      │
-                  Linux OS
+                     NIZAW
+                       │
+              ┌────────┴────────┐
+              │                 │
+           Library             CLI
+              │                 │
+       ┌──────┼──────┐          │
+       │      │      │          │
+     System Process Filesystem  │
+       │      │      │ Storage   │
+       │      │      │    Network│
+       │      │      │    Service│
+       │      │      │    Security│
+       │      │      │    Plugin │
+       └──────┼──────┘          │
+              │                 │
+              └────────┬────────┘
+                       │
+               Linux Kernel APIs
+                       │
+         ┌─────────────┼─────────────┐
+         │             │             │
+        /proc         /sys          /dev
+         │             │             │
+         └─────────────┼─────────────┘
+                       │
+                   Linux OS
 ```
 
 `libnizaw` is organized as a set of independent modules that each own one
@@ -98,7 +102,18 @@ area of system interaction. Modules depend on `nizaw::core` and, where
 sensible, on each other (e.g. `service` may use `process` to resolve a unit's
 main PID), but there is **no** dependency from `core` back up into any
 domain module, and CLI never gets special access — it only calls public
-module APIs.
+module APIs. The current modules are:
+
+- **core** - Error handling, logging, platform detection, environment helpers, version metadata
+- **system** - Hostname, kernel info, uptime, boot time, CPU count, page size
+- **process** - Process enumeration and inspection via /proc
+- **filesystem** - Disk usage and filesystem metadata
+- **storage** - Block device enumeration and metadata from /sys/block
+- **network** - Interface enumeration and address reporting
+- **service** - systemd unit listing and status via D-Bus
+- **security** - UID/GID/group and capability reporting
+- **plugin** - Plugin discovery and dynamic loading from .so files
+- **cli** - Complete command-line application with human-readable and JSON output
 
 ## 6. Module boundaries
 

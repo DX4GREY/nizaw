@@ -13,8 +13,10 @@ Modern Linux System & CLI Framework written in C++20
 - A `nizaw::filesystem` module that reports disk usage and filesystem metadata, including permissions, ownership, size, and symlink awareness.
 - A `nizaw::storage` module that enumerates block devices from `/sys/block` and reports physical/logical block sizes, removable/read-only flags, rotational status, model, and vendor.
 - A `nizaw::network` module that enumerates interfaces and reports names, indexes, state, MAC address, MTU, flags, and IPv4/IPv6 addresses.
+- A `nizaw::service` module that lists systemd units and reports status information via D-Bus.
 - A `nizaw::security` module that reports process identity, supplemental groups, and effective Linux capabilities.
 - A `nizaw::plugin` module that discovers and loads third-party command plugins from `.so` artifacts.
+- A complete CLI application (`nizaw`) with human-readable and JSON output modes.
 - A testable build layout suitable for incremental module expansion.
 
 ## Architecture
@@ -46,6 +48,14 @@ cmake --build build --parallel --target nizaw_example
 ./build/examples/nizaw_example
 ```
 
+To build the CLI application:
+
+```bash
+cmake -S . -B build -DNIZAW_BUILD_CLI=ON
+cmake --build build --parallel --target nizaw
+./build/nizaw --help
+```
+
 ## Quick Start
 
 ```cpp
@@ -62,6 +72,56 @@ int main() {
     std::cout << result.value().hostname << '\n';
     return 0;
 }
+```
+
+## CLI Quick Start
+
+```bash
+# Build with CLI enabled
+cmake -S . -B build -DNIZAW_BUILD_CLI=ON
+cmake --build build --parallel --target nizaw
+
+# View system information
+./build/nizaw system info
+
+# List running processes
+./build/nizaw process list
+
+# Inspect a specific process
+./build/nizaw process inspect 1234
+
+# Check filesystem usage
+./build/nizaw fs usage /home
+
+# Get filesystem info
+./build/nizaw fs info /home/user/file.txt
+
+# List storage devices
+./build/nizaw storage list
+
+# List network interfaces
+./build/nizaw network interfaces
+
+# Get network interface details
+./build/nizaw network info eth0
+
+# List systemd services
+./build/nizaw service list
+
+# Check service status
+./build/nizaw service status ssh
+
+# Get security identity
+./build/nizaw security identity
+
+# List capabilities
+./build/nizaw security capabilities
+
+# Discover plugins
+./build/nizaw plugins list ./path/to/plugins
+
+# Output as JSON
+./build/nizaw --json system info
 ```
 
 ## Development
