@@ -73,6 +73,14 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 
 # View process environment variables
 ./build/nizaw process environment 1234
+
+# Send signal to process
+./build/nizaw process signal 1234 SIGTERM
+./build/nizaw process terminate 1234
+./build/nizaw process terminate 1234 --force  # SIGKILL
+./build/nizaw process suspend 1234
+./build/nizaw process resume 1234
+./build/nizaw process nice 1234 -5  # Set nice value
 ```
 
 #### Filesystem
@@ -88,6 +96,29 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 
 # List all mount points
 ./build/nizaw fs mounts
+
+# Create directory
+./build/nizaw fs mkdir /tmp/test --recursive
+./build/nizaw fs mkdir /tmp/test --mode 0755
+
+# Remove file/directory
+./build/nizaw fs rm /tmp/test --recursive
+
+# Copy file/directory
+./build/nizaw fs cp /path/from /path/to
+./build/nizaw fs cp -r /dir/from /dir/to
+
+# Rename/move
+./build/nizaw fs mv /old/path /new/path
+
+# Write content to file
+./build/nizaw fs write /path/to/file "Hello, World!"
+
+# Set permissions
+./build/nizaw fs chmod /path/to/file 0644
+
+# Set owner
+./build/nizaw fs chown /path/to/file 1000:1000
 ```
 
 #### Storage
@@ -127,6 +158,16 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 
 # Inspect a service in detail
 ./build/nizaw service inspect ssh
+
+# Start/stop/restart service
+./build/nizaw service start ssh
+./build/nizaw service stop ssh
+./build/nizaw service restart ssh
+./build/nizaw service reload ssh
+
+# Enable/disable service at boot
+./build/nizaw service enable ssh
+./build/nizaw service disable ssh
 ```
 
 #### Security

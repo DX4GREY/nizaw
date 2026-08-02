@@ -2,7 +2,7 @@
 
 Modern Linux System & CLI Framework written in C++20
 
-> **Status:** Stable release candidate. The repository builds a complete modular library with CLI support and integrated tests.
+> **Status:** Stable release candidate with read-write support. The repository builds a complete modular library with CLI support and integrated tests.
 
 ## Features
 
@@ -14,17 +14,33 @@ Modern Linux System & CLI Framework written in C++20
   - Swap usage (total, used, free)
   - Load averages (1/5/15 minute) via `/proc/loadavg`
   - Loaded kernel modules listing via `/proc/modules`
-- A `nizaw::process` module that enumerates and inspects processes via /proc without crashing on vanished or permission-restricted entries.
-  - Process environment variable inspection via `/proc/<pid>/environ`
-- A `nizaw::filesystem` module that reports disk usage and filesystem metadata, including permissions, ownership, size, and symlink awareness.
+- A `nizaw::process` module that enumerates and inspects processes via /proc without crashing on vanished processes.
+  - Process listing with PID, PPID, UID, GID, name, state, memory, CPU time
+  - Detailed process inspection (command line, executable path, environment)
+  - **Write operations**: send_signal, terminate, suspend, resume, set_nice
+- A `nizaw::filesystem` module that provides disk usage and filesystem metadata.
+  - Disk usage (total, free, available, used bytes)
+  - File/directory metadata (type, permissions, owner, group, size, inode)
   - Mount point enumeration via `/proc/mounts`
+  - **Write operations**: create_directory, remove, rename, copy, set_permissions, set_owner, create_symlink, write_file, read_file, truncate
 - A `nizaw::storage` module that enumerates block devices from `/sys/block` and reports physical/logical block sizes, removable/read-only flags, rotational status, model, and vendor.
 - A `nizaw::network` module that enumerates interfaces and reports names, indexes, state, MAC address, MTU, flags, and IPv4/IPv6 addresses.
-- A `nizaw::service` module that lists systemd units and reports status information via D-Bus.
+- A `nizaw::service` module that manages systemd units via D-Bus.
+  - List and inspect services (load_state, active_state, enabled)
+  - **Write operations**: control (start/stop/restart/reload), enable, disable
 - A `nizaw::security` module that reports process identity, supplemental groups, and effective Linux capabilities.
 - A `nizaw::plugin` module that discovers and loads third-party command plugins from `.so` artifacts.
-- A complete CLI application (`nizaw`) with human-readable and JSON output modes.
-- A testable build layout suitable for incremental module expansion.
+
+### Write Operations Safety Features (New in v1.1.0)
+- **WriteOptions**: dry-run, force, recursive, timeout, confirmation prompts
+- **CapabilitySet**: Linux capability checking (CAP_SYS_ADMIN, CAP_NET_ADMIN, etc.)
+- **AuditLogger**: Structured logging for all mutating operations
+- All write operations return `Result<T>` for consistent error handling
+
+### Complete CLI Application
+- Human-readable and JSON output modes
+- Write command support with safety flags
+- Testable build layout suitable for incremental module expansion
 
 ## Architecture
 

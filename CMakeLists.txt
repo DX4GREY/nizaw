@@ -62,6 +62,7 @@ add_library(nizaw_core
     src/core/platform.cpp
     src/core/version.cpp
     src/core/env.cpp
+    src/core/write.cpp
 )
 add_library(nizaw::core ALIAS nizaw_core)
 

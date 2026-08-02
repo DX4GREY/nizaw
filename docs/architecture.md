@@ -34,10 +34,11 @@ never an afterthought and always stays independently useful/embeddable.
 ## 3. Scope
 
 In scope:
-- Read-mostly system introspection: system info, process enumeration/
-  inspection, filesystem usage/info, block storage enumeration,
-  network interface enumeration, systemd service listing/status, security
-  identity/capabilities.
+- System introspection: system info, process enumeration/inspection,
+  filesystem usage/info, block storage enumeration, network interface
+  enumeration, systemd service management, security identity/capabilities.
+- Write operations for system management: filesystem manipulation, process
+  control, service management, with comprehensive safety controls.
 - A plugin system for third-party command extension.
 - JSON output mode for all commands, for scripting.
 
@@ -60,10 +61,10 @@ Explicitly **out of scope** for the foreseeable roadmap (see Non-goals).
 - **Not** a full observability/monitoring stack (no persistence, no
   time-series storage, no alerting). Nizaw answers "what is the state right
   now", not "what was the state an hour ago."
-- Destructive service operations (`start`/`stop`/`restart`/`enable`/
-  `disable`) are explicitly deferred past initial `service` module scope and
-  will require an explicit confirmation/permission design of their own
-  before being added.
+- Advanced storage operations (partitioning, formatting, RAID management)
+  are deferred to future releases.
+- Network configuration (interface IP assignment, routing, DNS) is deferred
+  to future releases.
 
 ## 5. High-level architecture
 

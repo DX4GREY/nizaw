@@ -19,6 +19,13 @@ enum class ErrorCode {
     ParseError,
     ResourceUnavailable,
     AlreadyExists,
+    CapabilityRequired,
+    OperationNotPermitted,
+    ResourceBusy,
+    WouldBlock,
+    InvalidState,
+    PartialFailure,
+    ConfirmationRequired,
 };
 
 class Error {
@@ -123,12 +130,51 @@ namespace env {
 
 // --- version metadata ---
 inline constexpr unsigned kVersionMajor = 1;
-inline constexpr unsigned kVersionMinor = 0;
-inline constexpr unsigned kVersionPatch = 2;
+inline constexpr unsigned kVersionMinor = 1;
+inline constexpr unsigned kVersionPatch = 0;
 
 struct Version { unsigned major; unsigned minor; unsigned patch; };
 std::string version_string();
 Version version() noexcept;
+
+// --- write operations infrastructure ---
+struct WriteOptions {
+    bool dry_run = false;
+    bool force = false;
+    bool recursive = false;
+    std::optional<std::chrono::seconds> timeout;
+    std::optional<std::string> confirm_prompt;
+};
+
+class CapabilitySet {
+public:
+    [[nodiscard]] bool check(int capability) const noexcept;
+    [[nodiscard]] bool has_admin() const noexcept;
+    [[nodiscard]] bool has_network_admin() const noexcept;
+    [[nodiscard]] bool has_dac_override() const noexcept;
+    [[nodiscard]] bool has_setuid() const noexcept;
+    [[nodiscard]] bool has_setgid() const noexcept;
+    [[nodiscard]] bool has_kill() const noexcept;
+    [[nodiscard]] bool has_sys_ptrace() const noexcept;
+    [[nodiscard]] bool has_sys_time() const noexcept;
+    [[nodiscard]] bool has_setpcap() const noexcept;
+    [[nodiscard]] bool has_setfcaps() const noexcept;
+    [[nodiscard]] bool is_root() const noexcept;
+    [[nodiscard]] uid_t real_uid() const noexcept;
+    [[nodiscard]] uid_t effective_uid() const noexcept;
+    static CapabilitySet from_current() noexcept;
+};
+
+[[nodiscard]] CapabilitySet current_capabilities() noexcept;
+
+class AuditLogger {
+public:
+    static AuditLogger& instance() noexcept;
+    void log(const std::string& module, const std::string& operation,
+             const std::string& target, bool success,
+             const std::string& details = {});
+    void set_level(int level) noexcept;
+};
 
 } // namespace nizaw::core
 ```
@@ -179,6 +225,18 @@ struct ProcessInfo {
 Result<std::vector<ProcessInfo>> list();
 Result<ProcessInfo> inspect(pid_t pid);
 
+// --- write operations ---
+Result<void> send_signal(pid_t pid, int signal,
+                         const core::WriteOptions& options = {});
+Result<void> terminate(pid_t pid,
+                       const core::WriteOptions& options = {});
+Result<void> suspend(pid_t pid,
+                     const core::WriteOptions& options = {});
+Result<void> resume(pid_t pid,
+                    const core::WriteOptions& options = {});
+Result<void> set_nice(pid_t pid, int nice_value,
+                      const core::WriteOptions& options = {});
+
 } // namespace nizaw::process
 ```
 
@@ -209,6 +267,36 @@ struct EntryInfo {
 
 Result<DiskUsage> usage(const std::filesystem::path& path);
 Result<EntryInfo> info(const std::filesystem::path& path);
+
+// --- write operations ---
+Result<void> create_directory(const std::filesystem::path& path,
+                              const core::WriteOptions& options = {},
+                              mode_t permissions = 0755);
+Result<void> remove(const std::filesystem::path& path,
+                    const core::WriteOptions& options = {});
+Result<void> rename(const std::filesystem::path& from,
+                    const std::filesystem::path& to,
+                    const core::WriteOptions& options = {});
+Result<void> copy(const std::filesystem::path& from,
+                  const std::filesystem::path& to,
+                  const core::WriteOptions& options = {});
+Result<void> set_permissions(const std::filesystem::path& path,
+                             mode_t permissions,
+                             const core::WriteOptions& options = {});
+Result<void> set_owner(const std::filesystem::path& path,
+                       uid_t uid, gid_t gid,
+                       const core::WriteOptions& options = {});
+Result<void> create_symlink(const std::filesystem::path& target,
+                            const std::filesystem::path& link,
+                            const core::WriteOptions& options = {});
+Result<void> write_file(const std::filesystem::path& path,
+                        std::string_view content,
+                        const core::WriteOptions& options = {},
+                        mode_t permissions = 0644);
+Result<std::string> read_file(const std::filesystem::path& path);
+Result<void> truncate(const std::filesystem::path& path,
+                      std::uintmax_t size,
+                      const core::WriteOptions& options = {});
 
 } // namespace nizaw::filesystem
 ```
@@ -288,6 +376,17 @@ struct ServiceInfo {
 
 Result<std::vector<ServiceInfo>> list();
 Result<ServiceInfo> inspect(std::string_view unit_name);
+
+// --- write operations ---
+enum class ServiceAction { Start, Stop, Restart, Reload };
+
+Result<void> control(std::string_view unit_name,
+                     ServiceAction action,
+                     const core::WriteOptions& options = {});
+Result<void> enable(std::string_view unit_name,
+                    const core::WriteOptions& options = {});
+Result<void> disable(std::string_view unit_name,
+                     const core::WriteOptions& options = {});
 
 } // namespace nizaw::service
 ```
