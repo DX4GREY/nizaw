@@ -1,7 +1,7 @@
 # Nizaw — Architecture
 
 Status: Stable architecture and implementation
-Version: 1.0.2
+Version: 2.0.x
 
 ## 1. Purpose
 
