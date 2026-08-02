@@ -7,8 +7,14 @@ This guide provides comprehensive examples for using Nizaw both from the command
 - [CLI Usage](#cli-usage)
 - [Library Usage](#library-usage)
   - [System Information](#system-information)
+    - [CPU Information](#cpu-information)
+    - [Memory and Swap](#memory-and-swap)
+    - [Load Averages](#load-averages)
+    - [Kernel Modules](#kernel-modules)
   - [Process Management](#process-management)
+    - [Process Environment](#process-environment)
   - [Filesystem Operations](#filesystem-operations)
+    - [Mount Points](#mount-points)
   - [Storage Information](#storage-information)
   - [Network Information](#network-information)
   - [Service Management](#service-management)
@@ -39,6 +45,18 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 # View system information
 ./build/nizaw system info
 
+# View CPU information
+./build/nizaw system cpu
+
+# View memory and swap usage
+./build/nizaw system memory
+
+# View load averages
+./build/nizaw system load
+
+# List loaded kernel modules
+./build/nizaw system modules
+
 # Output as JSON
 ./build/nizaw system info --json
 ```
@@ -52,6 +70,9 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 # Inspect a specific process by PID
 ./build/nizaw process inspect 1234
 ./build/nizaw process inspect --json 1234
+
+# View process environment variables
+./build/nizaw process environment 1234
 ```
 
 #### Filesystem
@@ -64,6 +85,9 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 # Get detailed filesystem information
 ./build/nizaw fs info /home/user/document.txt
 ./build/nizaw fs info --json /tmp
+
+# List all mount points
+./build/nizaw fs mounts
 ```
 
 #### Storage
@@ -222,6 +246,131 @@ int main() {
 }
 ```
 
+### CPU Information
+
+The `nizaw::system` module provides detailed CPU information.
+
+```cpp
+#include <iostream>
+#include <nizaw/system.hpp>
+
+void print_cpu_info() {
+    auto result = nizaw::system::cpu_info();
+    
+    if (!result) {
+        std::cerr << "Failed to get CPU info: " 
+                  << result.error().message() << '\n';
+        return;
+    }
+    
+    const auto& cpus = result.value();
+    
+    std::cout << "CPU Information:\n";
+    for (const auto& cpu : cpus) {
+        std::cout << "  Model: " << cpu.model_name << '\n';
+        std::cout << "  Vendor: " << cpu.vendor_id << '\n';
+        std::cout << "  Frequency: " << cpu.frequency_mhz << " MHz\n";
+        std::cout << "  Cache: " << cpu.cache_size_kb << " KB\n";
+        std::cout << "  Cores: " << cpu.core_count << '\n';
+        std::cout << '\n';
+    }
+}
+```
+
+### Memory and Swap
+
+The `nizaw::system` module provides detailed memory and swap information.
+
+```cpp
+#include <iostream>
+#include <nizaw/system.hpp>
+
+void print_memory_info() {
+    auto mem_result = nizaw::system::memory_info();
+    if (!mem_result) {
+        std::cerr << "Failed to get memory info: " 
+                  << mem_result.error().message() << '\n';
+        return;
+    }
+    
+    auto swap_result = nizaw::system::swap_info();
+    if (!swap_result) {
+        std::cerr << "Failed to get swap info: " 
+                  << swap_result.error().message() << '\n';
+        return;
+    }
+    
+    const auto& mem = mem_result.value();
+    const auto& swap = swap_result.value();
+    
+    std::cout << "Memory Information:\n";
+    std::cout << "  Total: " << mem.total_kb << " KB\n";
+    std::cout << "  Free: " << mem.free_kb << " KB\n";
+    std::cout << "  Available: " << mem.available_kb << " KB\n";
+    std::cout << "  Buffers: " << mem.buffers_kb << " KB\n";
+    std::cout << "  Cached: " << mem.cached_kb << " KB\n";
+    std::cout << "  Shared: " << mem.shared_kb << " KB\n";
+    std::cout << '\n';
+    
+    std::cout << "Swap Information:\n";
+    std::cout << "  Total: " << swap.total_kb << " KB\n";
+    std::cout << "  Used: " << swap.used_kb << " KB\n";
+    std::cout << "  Free: " << swap.free_kb << " KB\n";
+}
+```
+
+### Load Averages
+
+The `nizaw::system` module provides system load averages.
+
+```cpp
+#include <iostream>
+#include <nizaw/system.hpp>
+
+void print_load_average() {
+    auto result = nizaw::system::load_average();
+    
+    if (!result) {
+        std::cerr << "Failed to get load average: " 
+                  << result.error().message() << '\n';
+        return;
+    }
+    
+    const auto& load = result.value();
+    
+    std::cout << "Load Average:\n";
+    std::cout << "  1 minute: " << load.one_min << '\n';
+    std::cout << "  5 minutes: " << load.five_min << '\n';
+    std::cout << "  15 minutes: " << load.fifteen_min << '\n';
+}
+```
+
+### Kernel Modules
+
+The `nizaw::system` module provides access to loaded kernel modules.
+
+```cpp
+#include <iostream>
+#include <nizaw/system.hpp>
+
+void print_kernel_modules() {
+    auto result = nizaw::system::kernel_modules();
+    
+    if (!result) {
+        std::cerr << "Failed to get kernel modules: " 
+                  << result.error().message() << '\n';
+        return;
+    }
+    
+    const auto& modules = result.value();
+    
+    std::cout << "Loaded Kernel Modules (" << modules.size() << "):\n";
+    for (const auto& module : modules) {
+        std::cout << "  - " << module << '\n';
+    }
+}
+```
+
 ### Process Management
 
 The `nizaw::process` module provides process enumeration and inspection.
@@ -365,9 +514,78 @@ int main() {
 }
 ```
 
+### Process Environment
+
+The `nizaw::process` module allows inspecting process environment variables.
+
+```cpp
+#include <iostream>
+#include <map>
+#include <nizaw/process.hpp>
+
+void print_process_environment(pid_t pid) {
+    auto result = nizaw::process::environment(pid);
+    
+    if (!result) {
+        std::cerr << "Failed to get environment for PID " << pid << ": "
+                  << result.error().message() << '\n';
+        return;
+    }
+    
+    const auto& env = result.value();
+    
+    std::cout << "Environment variables for PID " << pid << ":\n";
+    for (const auto& [key, value] : env) {
+        std::cout << "  " << key << "=" << value << '\n';
+    }
+}
+
+int main() {
+    // Get environment of current process
+    print_process_environment(getpid());
+    
+    return 0;
+}
+```
+
 ### Filesystem Operations
 
 The `nizaw::filesystem` module provides disk usage and file metadata.
+
+#### Mount Points
+
+The `nizaw::filesystem` module can enumerate all mounted filesystems.
+
+```cpp
+#include <iostream>
+#include <iomanip>
+#include <nizaw/filesystem.hpp>
+
+void list_mount_points() {
+    auto result = nizaw::filesystem::mounts();
+    
+    if (!result) {
+        std::cerr << "Failed to get mount points: " 
+                  << result.error().message() << '\n';
+        return;
+    }
+    
+    const auto& mounts = result.value();
+    
+    std::cout << std::left << std::setw(25) << "DEVICE"
+              << std::setw(20) << "MOUNT POINT"
+              << std::setw(15) << "TYPE"
+              << "OPTIONS\n";
+    std::cout << std::string(90, '-') << '\n';
+    
+    for (const auto& mount : mounts) {
+        std::cout << std::left << std::setw(25) << mount.device
+                  << std::setw(20) << mount.mount_point
+                  << std::setw(15) << mount.filesystem_type
+                  << mount.options << '\n';
+    }
+}
+```
 
 #### Checking Disk Usage
 

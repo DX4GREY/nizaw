@@ -9,8 +9,15 @@ Modern Linux System & CLI Framework written in C++20
 - Typed `Result<T>`-based error propagation for Linux-facing APIs.
 - A lightweight core foundation with error codes, logging, platform detection, environment helpers, and version metadata.
 - A `nizaw::system` module that exposes host/kernel/uptime/system information via Linux APIs.
+  - CPU information (model, vendor, frequency, cache, core count) via `/proc/cpuinfo`
+  - Memory usage breakdown (total, free, available, buffers, cached, shared) via `/proc/meminfo`
+  - Swap usage (total, used, free)
+  - Load averages (1/5/15 minute) via `/proc/loadavg`
+  - Loaded kernel modules listing via `/proc/modules`
 - A `nizaw::process` module that enumerates and inspects processes via /proc without crashing on vanished or permission-restricted entries.
+  - Process environment variable inspection via `/proc/<pid>/environ`
 - A `nizaw::filesystem` module that reports disk usage and filesystem metadata, including permissions, ownership, size, and symlink awareness.
+  - Mount point enumeration via `/proc/mounts`
 - A `nizaw::storage` module that enumerates block devices from `/sys/block` and reports physical/logical block sizes, removable/read-only flags, rotational status, model, and vendor.
 - A `nizaw::network` module that enumerates interfaces and reports names, indexes, state, MAC address, MTU, flags, and IPv4/IPv6 addresses.
 - A `nizaw::service` module that lists systemd units and reports status information via D-Bus.
@@ -84,11 +91,26 @@ cmake --build build --parallel --target nizaw
 # View system information
 ./build/nizaw system info
 
+# View CPU information
+./build/nizaw system cpu
+
+# View memory and swap usage
+./build/nizaw system memory
+
+# View load averages
+./build/nizaw system load
+
+# List loaded kernel modules
+./build/nizaw system modules
+
 # List running processes
 ./build/nizaw process list
 
 # Inspect a specific process
 ./build/nizaw process inspect 1234
+
+# View process environment variables
+./build/nizaw process environment 1234
 
 # Check filesystem usage
 ./build/nizaw fs usage /home
@@ -96,8 +118,14 @@ cmake --build build --parallel --target nizaw
 # Get filesystem info
 ./build/nizaw fs info /home/user/file.txt
 
+# List all mount points
+./build/nizaw fs mounts
+
 # List storage devices
 ./build/nizaw storage list
+
+# Get storage device details
+./build/nizaw storage info sda
 
 # List network interfaces
 ./build/nizaw network interfaces
