@@ -1,5 +1,7 @@
 #include "nizaw/process.hpp"
 
+#include "nizaw/core/log.hpp"
+
 #include <algorithm>
 #include <cerrno>
 #include <chrono>
@@ -12,9 +14,11 @@
 #include <iomanip>
 #include <iostream>
 #include <optional>
+#include <signal.h>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <sys/resource.h>
 #include <system_error>
 #include <unistd.h>
 
@@ -274,6 +278,167 @@ Result<std::map<std::string, std::string>> environment(pid_t pid) {
     }
 
     return env;
+}
+
+// Write operations implementation
+
+Result<void> send_signal(pid_t pid, int signal, const core::WriteOptions& options) {
+    if (options.dry_run) {
+        NIZAW_LOG_INFO("process", "Would send signal {} to PID {}", signal, pid);
+        return {};
+    }
+
+    if (options.confirm_prompt) {
+        NIZAW_LOG_WARN("process", "Confirmation required: {}", *options.confirm_prompt);
+        return Error(ErrorCode::ConfirmationRequired, 
+                     "Confirmation required for signal", "process");
+    }
+
+    if (::kill(pid, signal) != 0) {
+        if (errno == ESRCH) {
+            return Error(ErrorCode::NotFound, "Process does not exist", "process");
+        }
+        if (errno == EPERM) {
+            return Error(ErrorCode::PermissionDenied, 
+                         "Permission denied to send signal to process", "process");
+        }
+        return Error::from_errno(errno, ErrorCode::IoError, "process",
+                                "kill() failed");
+    }
+
+    NIZAW_LOG_INFO("process", "Sent signal {} to PID {}", signal, pid);
+    core::AuditLogger::instance().log("process", "send_signal", 
+                                      std::to_string(pid), true,
+                                      std::string(std::format("signal={}", signal)));
+    return {};
+}
+
+Result<void> terminate(pid_t pid, const core::WriteOptions& options) {
+    const int signal = options.force ? SIGKILL : SIGTERM;
+    const std::string signal_name = options.force ? "SIGKILL" : "SIGTERM";
+    
+    if (options.dry_run) {
+        NIZAW_LOG_INFO("process", "Would terminate PID {} with {}", pid, signal_name);
+        return {};
+    }
+
+    if (options.confirm_prompt) {
+        NIZAW_LOG_WARN("process", "Confirmation required: {}", *options.confirm_prompt);
+        return Error(ErrorCode::ConfirmationRequired, 
+                     "Confirmation required for terminate", "process");
+    }
+
+    if (::kill(pid, signal) != 0) {
+        if (errno == ESRCH) {
+            return Error(ErrorCode::NotFound, "Process does not exist", "process");
+        }
+        if (errno == EPERM) {
+            return Error(ErrorCode::PermissionDenied, 
+                         "Permission denied to terminate process", "process");
+        }
+        return Error::from_errno(errno, ErrorCode::IoError, "process",
+                                "kill() failed");
+    }
+
+    NIZAW_LOG_INFO("process", "Terminated PID {} with {}", pid, signal_name);
+    core::AuditLogger::instance().log("process", "terminate", 
+                                      std::to_string(pid), true,
+                                      std::string(std::format("signal={}", signal_name)));
+    return {};
+}
+
+Result<void> suspend(pid_t pid, const core::WriteOptions& options) {
+    if (options.dry_run) {
+        NIZAW_LOG_INFO("process", "Would suspend PID {}", pid);
+        return {};
+    }
+
+    if (options.confirm_prompt) {
+        NIZAW_LOG_WARN("process", "Confirmation required: {}", *options.confirm_prompt);
+        return Error(ErrorCode::ConfirmationRequired, 
+                     "Confirmation required for suspend", "process");
+    }
+
+    if (::kill(pid, SIGSTOP) != 0) {
+        if (errno == ESRCH) {
+            return Error(ErrorCode::NotFound, "Process does not exist", "process");
+        }
+        if (errno == EPERM) {
+            return Error(ErrorCode::PermissionDenied, 
+                         "Permission denied to suspend process", "process");
+        }
+        return Error::from_errno(errno, ErrorCode::IoError, "process",
+                                "kill(SIGSTOP) failed");
+    }
+
+    NIZAW_LOG_INFO("process", "Suspended PID {}", pid);
+    core::AuditLogger::instance().log("process", "suspend", std::to_string(pid), true);
+    return {};
+}
+
+Result<void> resume(pid_t pid, const core::WriteOptions& options) {
+    if (options.dry_run) {
+        NIZAW_LOG_INFO("process", "Would resume PID {}", pid);
+        return {};
+    }
+
+    if (options.confirm_prompt) {
+        NIZAW_LOG_WARN("process", "Confirmation required: {}", *options.confirm_prompt);
+        return Error(ErrorCode::ConfirmationRequired, 
+                     "Confirmation required for resume", "process");
+    }
+
+    if (::kill(pid, SIGCONT) != 0) {
+        if (errno == ESRCH) {
+            return Error(ErrorCode::NotFound, "Process does not exist", "process");
+        }
+        if (errno == EPERM) {
+            return Error(ErrorCode::PermissionDenied, 
+                         "Permission denied to resume process", "process");
+        }
+        return Error::from_errno(errno, ErrorCode::IoError, "process",
+                                "kill(SIGCONT) failed");
+    }
+
+    NIZAW_LOG_INFO("process", "Resumed PID {}", pid);
+    core::AuditLogger::instance().log("process", "resume", std::to_string(pid), true);
+    return {};
+}
+
+Result<void> set_nice(pid_t pid, int nice_value, const core::WriteOptions& options) {
+    if (options.dry_run) {
+        NIZAW_LOG_INFO("process", "Would set nice value of PID {} to {}", pid, nice_value);
+        return {};
+    }
+
+    if (options.confirm_prompt) {
+        NIZAW_LOG_WARN("process", "Confirmation required: {}", *options.confirm_prompt);
+        return Error(ErrorCode::ConfirmationRequired, 
+                     "Confirmation required for set_nice", "process");
+    }
+
+    if (nice_value < -20 || nice_value > 19) {
+        return Error(ErrorCode::InvalidArgument, 
+                     "Nice value must be between -20 and 19", "process");
+    }
+
+    if (::setpriority(PRIO_PROCESS, pid, nice_value) != 0) {
+        if (errno == ESRCH) {
+            return Error(ErrorCode::NotFound, "Process does not exist", "process");
+        }
+        if (errno == EPERM) {
+            return Error(ErrorCode::PermissionDenied, 
+                         "Permission denied to set nice value", "process");
+        }
+        return Error::from_errno(errno, ErrorCode::IoError, "process",
+                                "setpriority() failed");
+    }
+
+    NIZAW_LOG_INFO("process", "Set nice value of PID {} to {}", pid, nice_value);
+    core::AuditLogger::instance().log("process", "set_nice", 
+                                      std::to_string(pid), true,
+                                      std::string(std::format("nice={}", nice_value)));
+    return {};
 }
 
 }  // namespace nizaw::process

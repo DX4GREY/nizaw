@@ -25,6 +25,20 @@ std::string_view to_string(ErrorCode code) noexcept {
             return "ResourceUnavailable";
         case ErrorCode::AlreadyExists:
             return "AlreadyExists";
+        case ErrorCode::CapabilityRequired:
+            return "CapabilityRequired";
+        case ErrorCode::OperationNotPermitted:
+            return "OperationNotPermitted";
+        case ErrorCode::ResourceBusy:
+            return "ResourceBusy";
+        case ErrorCode::WouldBlock:
+            return "WouldBlock";
+        case ErrorCode::InvalidState:
+            return "InvalidState";
+        case ErrorCode::PartialFailure:
+            return "PartialFailure";
+        case ErrorCode::ConfirmationRequired:
+            return "ConfirmationRequired";
     }
     return "Unknown";
 }

@@ -21,6 +21,13 @@ enum class ErrorCode {
     ParseError,
     ResourceUnavailable,
     AlreadyExists,
+    CapabilityRequired,
+    OperationNotPermitted,
+    ResourceBusy,
+    WouldBlock,
+    InvalidState,
+    PartialFailure,
+    ConfirmationRequired,
 };
 
 /// Human-readable name for an ErrorCode, e.g. for logging or JSON output.
