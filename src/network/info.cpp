@@ -20,6 +20,153 @@
 namespace nizaw::network {
 namespace {
 
+std::string hex_to_ip(const std::string& hex) {
+    if (hex.size() != 8) {
+        return {};
+    }
+    
+    unsigned int parts[4];
+    std::sscanf(hex.c_str(), "%2x%2x%2x%2x", &parts[0], &parts[1], &parts[2], &parts[3]);
+    
+    char buf[INET_ADDRSTRLEN];
+    struct in_addr addr;
+    addr.s_addr = (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3];
+    
+    if (inet_ntop(AF_INET, &addr, buf, sizeof(buf)) == nullptr) {
+        return {};
+    }
+    return buf;
+}
+
+std::string hex_to_ipv6(const std::string& hex) {
+    if (hex.size() != 32) {
+        return {};
+    }
+    
+    unsigned int parts[4];
+    std::sscanf(hex.c_str(), "%8x%8x%8x%8x", &parts[0], &parts[1], &parts[2], &parts[3]);
+    
+    char buf[INET6_ADDRSTRLEN];
+    struct in6_addr addr;
+    addr.s6_addr32[0] = htonl(parts[0]);
+    addr.s6_addr32[1] = htonl(parts[1]);
+    addr.s6_addr32[2] = htonl(parts[2]);
+    addr.s6_addr32[3] = htonl(parts[3]);
+    
+    if (inet_ntop(AF_INET6, &addr, buf, sizeof(buf)) == nullptr) {
+        return {};
+    }
+    return buf;
+}
+
+std::uint16_t hex_to_port(const std::string& hex) {
+    return static_cast<std::uint16_t>(std::stoul(hex, nullptr, 16));
+}
+
+std::string tcp_state(int state) {
+    switch (state) {
+        case 1: return "ESTABLISHED";
+        case 2: return "SYN_SENT";
+        case 3: return "SYN_RECV";
+        case 4: return "FIN_WAIT1";
+        case 5: return "FIN_WAIT2";
+        case 6: return "TIME_WAIT";
+        case 7: return "CLOSE";
+        case 8: return "CLOSE_WAIT";
+        case 9: return "LAST_ACK";
+        case 10: return "LISTEN";
+        case 11: return "CLOSING";
+        default: return "UNKNOWN";
+    }
+}
+
+Result<std::vector<ConnectionInfo>> parse_proc_net(const std::string& filepath, const std::string& protocol) {
+    std::ifstream file(filepath);
+    if (!file) {
+        return Error(ErrorCode::NotFound, filepath + " is unavailable", "network");
+    }
+    
+    std::vector<ConnectionInfo> connections;
+    std::string line;
+    
+    // Skip header line
+    std::getline(file, line);
+    
+    while (std::getline(file, line)) {
+        if (line.empty()) {
+            continue;
+        }
+        
+        std::istringstream stream(line);
+        ConnectionInfo conn;
+        conn.protocol = protocol;
+        
+        // Read sequence number with colon (e.g., "0:")
+        std::string seq;
+        stream >> seq;
+        
+        // Read local address:port and remote address:port
+        std::string local_full, remote_full;
+        stream >> local_full >> remote_full;
+        
+        // Parse state
+        std::string state_hex;
+        stream >> state_hex;
+        
+        // Read remaining fields
+        // tx_queue:rx_queue is ONE field (e.g., "00000000:00000000")
+        std::string tx_rx_queues;
+        stream >> tx_rx_queues;
+        
+        // tr:tm->when is ONE field (e.g., "00:00000000")
+        std::string tr_tm_when;
+        stream >> tr_tm_when;
+        
+        // retrnsmt
+        std::string retrnsmt;
+        stream >> retrnsmt;
+        
+        // uid timeout inode
+        unsigned int uid = 0, timeout = 0;
+        unsigned long inode = 0;
+        stream >> uid >> timeout >> inode;
+        
+        // Split address:port
+        auto split_addr_port = [](const std::string& full, std::string& addr, std::string& port) {
+            const auto pos = full.find(':');
+            if (pos != std::string::npos) {
+                addr = full.substr(0, pos);
+                port = full.substr(pos + 1);
+            }
+        };
+        
+        std::string local_addr_hex, local_port_hex;
+        std::string remote_addr_hex, remote_port_hex;
+        split_addr_port(local_full, local_addr_hex, local_port_hex);
+        split_addr_port(remote_full, remote_addr_hex, remote_port_hex);
+        
+        // Convert hex to readable format
+        if (protocol == "tcp6" || protocol == "udp6") {
+            conn.local_address = hex_to_ipv6(local_addr_hex);
+            conn.remote_address = hex_to_ipv6(remote_addr_hex);
+        } else {
+            conn.local_address = hex_to_ip(local_addr_hex);
+            conn.remote_address = hex_to_ip(remote_addr_hex);
+        }
+        
+        conn.local_port = hex_to_port(local_port_hex);
+        conn.remote_port = hex_to_port(remote_port_hex);
+        conn.state = tcp_state(static_cast<int>(std::stoul(state_hex, nullptr, 16)));
+        conn.uid = static_cast<std::uint32_t>(uid);
+        conn.inode = static_cast<std::uint32_t>(inode);
+        
+        connections.push_back(conn);
+    }
+    
+    return connections;
+}
+
+
 std::string to_hex_mac(const unsigned char* data, std::size_t length) {
     std::ostringstream out;
     out << std::hex << std::setfill('0');
@@ -160,6 +307,44 @@ Result<InterfaceInfo> inspect(std::string_view interface_name) {
         }
     }
     return Error(ErrorCode::NotFound, "Interface not found", "network");
+}
+
+Result<std::vector<ConnectionInfo>> connections() {
+    std::vector<ConnectionInfo> all_connections;
+    
+    // Parse TCP connections
+    auto tcp_result = parse_proc_net("/proc/net/tcp", "tcp");
+    if (tcp_result) {
+        all_connections.insert(all_connections.end(), 
+                              std::make_move_iterator(tcp_result.value().begin()),
+                              std::make_move_iterator(tcp_result.value().end()));
+    }
+    
+    // Parse TCP6 connections
+    auto tcp6_result = parse_proc_net("/proc/net/tcp6", "tcp6");
+    if (tcp6_result) {
+        all_connections.insert(all_connections.end(),
+                              std::make_move_iterator(tcp6_result.value().begin()),
+                              std::make_move_iterator(tcp6_result.value().end()));
+    }
+    
+    // Parse UDP connections
+    auto udp_result = parse_proc_net("/proc/net/udp", "udp");
+    if (udp_result) {
+        all_connections.insert(all_connections.end(),
+                              std::make_move_iterator(udp_result.value().begin()),
+                              std::make_move_iterator(udp_result.value().end()));
+    }
+    
+    // Parse UDP6 connections
+    auto udp6_result = parse_proc_net("/proc/net/udp6", "udp6");
+    if (udp6_result) {
+        all_connections.insert(all_connections.end(),
+                              std::make_move_iterator(udp6_result.value().begin()),
+                              std::make_move_iterator(udp6_result.value().end()));
+    }
+    
+    return all_connections;
 }
 
 }  // namespace nizaw::network

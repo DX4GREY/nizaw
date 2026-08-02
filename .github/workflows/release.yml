@@ -121,16 +121,40 @@ jobs:
             COMMITS='- No commit history available'
           fi
 
-          cat > release-notes.md <<EOF
-          ## Release ${RELEASE_TAG}
+          # Find commit with most changes
+          HIGHLIGHT_COMMIT=""
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$RELEASE_TAG" ]; then
+            HIGHLIGHT=$(git log --no-merges --pretty=format:'%H %s' "${PREV_TAG}..${RELEASE_TAG}" | while read -r hash msg; do
+              changes=$(git diff --shortstat "${PREV_TAG}..${hash}" | awk '{print $4}' | sed 's/[^0-9]//g')
+              if [ -n "$changes" ]; then
+                echo "$changes $hash $msg"
+              fi
+            done | sort -rn | head -n 1)
+            
+            if [ -n "$HIGHLIGHT" ]; then
+              HIGHLIGHT_HASH=$(echo "$HIGHLIGHT" | awk '{print $2}')
+              HIGHLIGHT_MSG=$(echo "$HIGHLIGHT" | awk '{print $3}')
+              HIGHLIGHT_CHANGES=$(echo "$HIGHLIGHT" | awk '{print $1}')
+              HIGHLIGHT_COMMIT="- **Highlight**: \`${HIGHLIGHT_HASH:0:7}\` ${HIGHLIGHT_MSG} (${HIGHLIGHT_CHANGES} changes)"
+            fi
+          fi
 
-          ### Build highlights
-          - Multi-architecture Linux binaries for x86_64 and aarch64
-          - Release archive includes headers, libraries, and CLI binary
-
-          ### Recent commits
-          ${COMMITS}
-          EOF
+          {
+            echo "## Release ${RELEASE_TAG}"
+            echo ""
+            echo "### Build highlights"
+            echo "- Multi-architecture Linux binaries for x86_64 and aarch64"
+            echo "- Release archive includes headers, libraries, and CLI binary"
+            echo ""
+            echo "### Recent commits"
+            echo "$COMMITS"
+            
+            if [ -n "$HIGHLIGHT_COMMIT" ]; then
+              echo ""
+              echo "### Notable changes"
+              echo "$HIGHLIGHT_COMMIT"
+            fi
+          } > release-notes.md
 
           echo "Generated release notes:"
           cat release-notes.md

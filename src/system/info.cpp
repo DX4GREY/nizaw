@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -300,6 +301,73 @@ Result<std::vector<std::string>> kernel_modules() {
     }
 
     return modules;
+}
+
+Result<std::vector<HwmonData>> hwmon() {
+    const std::filesystem::path hwmon_path("/sys/class/hwmon");
+    if (!std::filesystem::exists(hwmon_path)) {
+        return Error(ErrorCode::NotFound, "/sys/class/hwmon is unavailable", "system");
+    }
+
+    std::vector<HwmonData> sensors;
+    std::error_code ec;
+
+    for (const auto& entry : std::filesystem::directory_iterator(hwmon_path, ec)) {
+        if (ec) {
+            break;
+        }
+        if (!entry.is_directory(ec)) {
+            continue;
+        }
+
+        const std::string name = entry.path().filename().string();
+        const std::string name_path = entry.path().string();
+        std::string sensor_name;
+        std::string sensor_type;
+
+        // Try to get sensor name
+        std::ifstream name_file(name_path + "/name");
+        if (name_file) {
+            std::getline(name_file, sensor_name);
+        }
+
+        // Check for temperature
+        for (const auto& temp_entry : std::filesystem::directory_iterator(name_path, ec)) {
+            if (ec || !temp_entry.is_regular_file(ec)) {
+                continue;
+            }
+            const std::string filename = temp_entry.path().filename().string();
+            if (filename.starts_with("temp") && filename.ends_with("_input")) {
+                std::ifstream temp_file(temp_entry.path());
+                if (temp_file) {
+                    std::string value;
+                    std::getline(temp_file, value);
+                    if (!value.empty()) {
+                        HwmonData data;
+                        data.sensor_name = sensor_name.empty() ? name : sensor_name;
+                        data.sensor_type = "temperature";
+                        data.temperature_celsius = std::stod(value) / 1000.0;
+                        sensors.push_back(data);
+                    }
+                }
+            } else if (filename.starts_with("fan") && filename.ends_with("_input")) {
+                std::ifstream fan_file(temp_entry.path());
+                if (fan_file) {
+                    std::string value;
+                    std::getline(fan_file, value);
+                    if (!value.empty()) {
+                        HwmonData data;
+                        data.sensor_name = sensor_name.empty() ? name : sensor_name;
+                        data.sensor_type = "fan";
+                        data.fan_speed_rpm = std::stod(value);
+                        sensors.push_back(data);
+                    }
+                }
+            }
+        }
+    }
+
+    return sensors;
 }
 
 }  // namespace nizaw::system

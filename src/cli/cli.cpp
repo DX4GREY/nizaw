@@ -102,6 +102,7 @@ void print_help() {
               << "  system memory\n"
               << "  system load\n"
               << "  system modules\n"
+              << "  system hwmon\n"
               << "  process list\n"
               << "  process inspect <PID>\n"
               << "  process environment <PID>\n"
@@ -110,8 +111,10 @@ void print_help() {
               << "  fs mounts\n"
               << "  storage list\n"
               << "  storage info <DEVICE>\n"
+              << "  storage iostat <DEVICE>\n"
               << "  network interfaces\n"
               << "  network info <IFACE>\n"
+              << "  network connections\n"
               << "  service list\n"
               << "  service status <UNIT>\n"
               << "  service inspect <UNIT>\n"
@@ -293,6 +296,40 @@ int run_system_modules(const Options& options) {
     } else {
         for (const auto& module : modules) {
             std::cout << module << "\n";
+        }
+    }
+    return 0;
+}
+
+int run_system_hwmon(const Options& options) {
+    const auto result = system::hwmon();
+    if (!result) {
+        print_error(result.error(), options.json);
+        return 1;
+    }
+    const auto& sensors = result.value();
+    if (options.json) {
+        std::vector<std::string> items;
+        for (const auto& sensor : sensors) {
+            std::string item = "{"
+                "\"sensor_name\":" + json_string(sensor.sensor_name) +
+                ",\"sensor_type\":" + json_string(sensor.sensor_type) +
+                ",\"temperature_celsius\":" + std::to_string(sensor.temperature_celsius) +
+                ",\"fan_speed_rpm\":" + std::to_string(sensor.fan_speed_rpm) +
+                ",\"voltage\":" + std::to_string(sensor.voltage) +
+                ",\"power_consumption\":" + std::to_string(sensor.power_consumption) +
+                "}";
+            items.push_back(item);
+        }
+        std::cout << join_json_array(items) << "\n";
+    } else {
+        for (const auto& sensor : sensors) {
+            std::cout << sensor.sensor_name << " (" << sensor.sensor_type << ")\n";
+            if (sensor.sensor_type == "temperature") {
+                std::cout << "  Temperature: " << sensor.temperature_celsius << "°C\n";
+            } else if (sensor.sensor_type == "fan") {
+                std::cout << "  Fan speed: " << sensor.fan_speed_rpm << " RPM\n";
+            }
         }
     }
     return 0;
@@ -769,6 +806,9 @@ int run_command(const Options& options) {
         if (options.args.size() == 2 && options.args[1] == "modules") {
             return run_system_modules(options);
         }
+        if (options.args.size() == 2 && options.args[1] == "hwmon") {
+            return run_system_hwmon(options);
+        }
     } else if (command == "process") {
         if (options.args.size() == 2 && options.args[1] == "list") {
             return run_process_list(options);
@@ -848,12 +888,74 @@ int run_command(const Options& options) {
         if (options.args.size() == 3 && options.args[1] == "info") {
             return run_storage_info(options, options.args[2]);
         }
+        if (options.args.size() == 3 && options.args[1] == "iostat") {
+            const auto result = storage::iostat(options.args[2]);
+            if (!result) {
+                print_error(result.error(), options.json);
+                return 1;
+            }
+            const auto& stats = result.value();
+            if (options.json) {
+                std::cout << "{"
+                          << "\"device\":" << json_string(options.args[2])
+                          << ",\"read_ops\":" << stats.read_ops
+                          << ",\"write_ops\":" << stats.write_ops
+                          << ",\"read_sectors\":" << stats.read_sectors
+                          << ",\"write_sectors\":" << stats.write_sectors
+                          << ",\"read_bytes\":" << stats.read_bytes
+                          << ",\"write_bytes\":" << stats.write_bytes
+                          << ",\"io_time_ms\":" << stats.io_time_ms
+                          << "}\n";
+            } else {
+                print_row("Device", options.args[2]);
+                print_row("Read operations", std::to_string(stats.read_ops));
+                print_row("Write operations", std::to_string(stats.write_ops));
+                print_row("Read sectors", std::to_string(stats.read_sectors));
+                print_row("Write sectors", std::to_string(stats.write_sectors));
+                print_row("Read bytes", std::to_string(stats.read_bytes));
+                print_row("Write bytes", std::to_string(stats.write_bytes));
+                print_row("IO time", std::to_string(stats.io_time_ms) + " ms");
+            }
+            return 0;
+        }
     } else if (command == "network") {
         if (options.args.size() == 2 && options.args[1] == "interfaces") {
             return run_network_interfaces(options);
         }
         if (options.args.size() == 3 && options.args[1] == "info") {
             return run_network_info(options, options.args[2]);
+        }
+        if (options.args.size() == 2 && options.args[1] == "connections") {
+            const auto result = network::connections();
+            if (!result) {
+                print_error(result.error(), options.json);
+                return 1;
+            }
+            const auto& connections = result.value();
+            if (options.json) {
+                std::vector<std::string> items;
+                for (const auto& conn : connections) {
+                    items.push_back("{"
+                        "\"protocol\":" + json_string(conn.protocol) +
+                        ",\"local_address\":" + json_string(conn.local_address) +
+                        ",\"local_port\":" + std::to_string(conn.local_port) +
+                        ",\"remote_address\":" + json_string(conn.remote_address) +
+                        ",\"remote_port\":" + std::to_string(conn.remote_port) +
+                        ",\"state\":" + json_string(conn.state) +
+                        ",\"uid\":" + std::to_string(conn.uid) +
+                        ",\"inode\":" + std::to_string(conn.inode) +
+                        "}");
+                }
+                std::cout << join_json_array(items) << "\n";
+            } else {
+                for (const auto& conn : connections) {
+                    std::cout << conn.protocol << " "
+                              << conn.local_address << ":" << conn.local_port
+                              << " -> " << conn.remote_address << ":" << conn.remote_port
+                              << " " << conn.state << "\n";
+                }
+            }
+            return 0;
         }
     } else if (command == "service") {
         if (options.args.size() == 2 && options.args[1] == "list") {

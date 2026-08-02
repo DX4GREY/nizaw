@@ -110,6 +110,9 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 # Get detailed information about an interface
 ./build/nizaw network info eth0
 ./build/nizaw network info --json wlan0
+
+# List all network connections (TCP/UDP)
+./build/nizaw network connections
 ```
 
 #### Service

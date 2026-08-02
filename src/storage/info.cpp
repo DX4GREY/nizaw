@@ -134,4 +134,57 @@ Result<Device> inspect(const std::string& device) {
     return read_device(sys_block);
 }
 
+Result<IoStats> iostat(const std::string& device) {
+    const std::filesystem::path dev_node(device);
+    if (dev_node.filename().empty()) {
+        return Error(ErrorCode::InvalidArgument, "Invalid device path", "storage");
+    }
+
+    const std::string device_name = dev_node.filename().string();
+    
+    std::ifstream diskstats("/proc/diskstats");
+    if (!diskstats) {
+        return Error(ErrorCode::NotFound, "/proc/diskstats is unavailable", "storage");
+    }
+
+    std::string line;
+    while (std::getline(diskstats, line)) {
+        if (line.empty()) {
+            continue;
+        }
+
+        // Format: major minor name reads reads_merged reads_sectors reads_ms writes writes_merged writes_sectors writes_ms ios_in_progress ios_ms_total io_ticks
+        std::istringstream stream(line);
+        
+        unsigned int major = 0, minor = 0;
+        std::string name;
+        unsigned long reads = 0, reads_merged = 0, reads_sectors = 0, reads_ms = 0;
+        unsigned long writes = 0, writes_merged = 0, writes_sectors = 0, writes_ms = 0;
+        unsigned long ios_in_progress = 0, ios_ms_total = 0, io_ticks = 0;
+        
+        stream >> major >> minor >> name;
+        
+        if (name != device_name) {
+            continue;
+        }
+        
+        stream >> reads >> reads_merged >> reads_sectors >> reads_ms
+               >> writes >> writes_merged >> writes_sectors >> writes_ms
+               >> ios_in_progress >> ios_ms_total >> io_ticks;
+        
+        IoStats stats{};
+        stats.read_ops = reads;
+        stats.write_ops = writes;
+        stats.read_sectors = reads_sectors;
+        stats.write_sectors = writes_sectors;
+        stats.read_bytes = reads_sectors * 512ull;
+        stats.write_bytes = writes_sectors * 512ull;
+        stats.io_time_ms = static_cast<double>(io_ticks);
+        
+        return stats;
+    }
+
+    return Error(ErrorCode::NotFound, "Device not found in /proc/diskstats", "storage");
+}
+
 }  // namespace nizaw::storage

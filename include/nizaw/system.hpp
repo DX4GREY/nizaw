@@ -23,6 +23,15 @@ struct LoadAverage {
     double fifteen_min = 0.0;
 };
 
+struct HwmonData {
+    std::string sensor_name;
+    std::string sensor_type;
+    double temperature_celsius = 0.0;
+    double fan_speed_rpm = 0.0;
+    double voltage = 0.0;
+    double power_consumption = 0.0;
+};
+
 struct MemoryInfo {
     std::uint64_t total_kb = 0;
     std::uint64_t free_kb = 0;
@@ -56,5 +65,6 @@ struct SystemInfo {
 [[nodiscard]] Result<LoadAverage> load_average();
 [[nodiscard]] Result<SwapInfo> swap_info();
 [[nodiscard]] Result<std::vector<std::string>> kernel_modules();
+[[nodiscard]] Result<std::vector<HwmonData>> hwmon();
 
 }  // namespace nizaw::system
