@@ -62,6 +62,7 @@ cmake --build build --parallel --target nizaw
 - [Usage](Usage)
 - [Architecture](Architecture)
 - [Development](Development)
+- [Plugin Development](PluginDevelopment)
 - [Troubleshooting](Troubleshooting)
 - [Integration](Integration)
 
