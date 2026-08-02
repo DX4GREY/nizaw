@@ -98,10 +98,16 @@ void print_help() {
     std::cout << "Usage: nizaw [--help] [--version] [--json] [--verbose] [--quiet] [--no-color] <command> [args...]\n"
               << "Commands:\n"
               << "  system info\n"
+              << "  system cpu\n"
+              << "  system memory\n"
+              << "  system load\n"
+              << "  system modules\n"
               << "  process list\n"
               << "  process inspect <PID>\n"
+              << "  process environment <PID>\n"
               << "  fs usage <PATH>\n"
               << "  fs info <PATH>\n"
+              << "  fs mounts\n"
               << "  storage list\n"
               << "  storage info <DEVICE>\n"
               << "  network interfaces\n"
@@ -169,6 +175,125 @@ int run_system_info(const Options& options) {
         print_row("Boot time", info.boot_time);
         print_row("Page size", std::to_string(info.page_size));
         print_row("CPU count", std::to_string(info.cpu_count));
+    }
+    return 0;
+}
+
+int run_system_cpu(const Options& options) {
+    const auto result = system::cpu_info();
+    if (!result) {
+        print_error(result.error(), options.json);
+        return 1;
+    }
+    const auto& cpus = result.value();
+    if (options.json) {
+        std::vector<std::string> items;
+        for (const auto& cpu : cpus) {
+            std::string item = "{"
+                "\"model_name\":" + json_string(cpu.model_name) +
+                ",\"vendor_id\":" + json_string(cpu.vendor_id) +
+                ",\"frequency_mhz\":" + std::to_string(cpu.frequency_mhz) +
+                ",\"cache_size_kb\":" + std::to_string(cpu.cache_size_kb) +
+                ",\"core_count\":" + std::to_string(cpu.core_count) +
+                "}";
+            items.push_back(item);
+        }
+        std::cout << join_json_array(items) << "\n";
+    } else {
+        for (const auto& cpu : cpus) {
+            std::cout << "Model: " << cpu.model_name << "\n";
+            std::cout << "  Vendor: " << cpu.vendor_id << "\n";
+            std::cout << "  Frequency: " << cpu.frequency_mhz << " MHz\n";
+            std::cout << "  Cache: " << cpu.cache_size_kb << " KB\n";
+            std::cout << "  Cores: " << cpu.core_count << "\n\n";
+        }
+    }
+    return 0;
+}
+
+int run_system_memory(const Options& options) {
+    const auto mem_result = system::memory_info();
+    if (!mem_result) {
+        print_error(mem_result.error(), options.json);
+        return 1;
+    }
+    const auto& mem = mem_result.value();
+
+    const auto swap_result = system::swap_info();
+    if (!swap_result) {
+        print_error(swap_result.error(), options.json);
+        return 1;
+    }
+    const auto& swap = swap_result.value();
+
+    if (options.json) {
+        std::cout << "{"
+                  << "\"memory\":{"
+                  << "\"total_kb\":" << mem.total_kb
+                  << ",\"free_kb\":" << mem.free_kb
+                  << ",\"available_kb\":" << mem.available_kb
+                  << ",\"buffers_kb\":" << mem.buffers_kb
+                  << ",\"cached_kb\":" << mem.cached_kb
+                  << ",\"shared_kb\":" << mem.shared_kb
+                  << "},"
+                  << "\"swap\":{"
+                  << "\"total_kb\":" << swap.total_kb
+                  << ",\"used_kb\":" << swap.used_kb
+                  << ",\"free_kb\":" << swap.free_kb
+                  << "}"
+                  << "}\n";
+    } else {
+        print_row("Memory total", std::to_string(mem.total_kb) + " KB");
+        print_row("Memory free", std::to_string(mem.free_kb) + " KB");
+        print_row("Memory available", std::to_string(mem.available_kb) + " KB");
+        print_row("Buffers", std::to_string(mem.buffers_kb) + " KB");
+        print_row("Cached", std::to_string(mem.cached_kb) + " KB");
+        print_row("Shared", std::to_string(mem.shared_kb) + " KB");
+        print_row("Swap total", std::to_string(swap.total_kb) + " KB");
+        print_row("Swap used", std::to_string(swap.used_kb) + " KB");
+        print_row("Swap free", std::to_string(swap.free_kb) + " KB");
+    }
+    return 0;
+}
+
+int run_system_load(const Options& options) {
+    const auto result = system::load_average();
+    if (!result) {
+        print_error(result.error(), options.json);
+        return 1;
+    }
+    const auto& load = result.value();
+    if (options.json) {
+        std::cout << "{"
+                  << "\"one_min\":" << load.one_min
+                  << ",\"five_min\":" << load.five_min
+                  << ",\"fifteen_min\":" << load.fifteen_min
+                  << "}\n";
+    } else {
+        print_row("Load average (1 min)", std::to_string(load.one_min));
+        print_row("Load average (5 min)", std::to_string(load.five_min));
+        print_row("Load average (15 min)", std::to_string(load.fifteen_min));
+    }
+    return 0;
+}
+
+int run_system_modules(const Options& options) {
+    const auto result = system::kernel_modules();
+    if (!result) {
+        print_error(result.error(), options.json);
+        return 1;
+    }
+    const auto& modules = result.value();
+    if (options.json) {
+        std::vector<std::string> items;
+        for (const auto& module : modules) {
+            items.push_back(json_string(module));
+        }
+        std::cout << join_json_array(items) << "\n";
+    } else {
+        for (const auto& module : modules) {
+            std::cout << module << "\n";
+        }
     }
     return 0;
 }
@@ -632,6 +757,18 @@ int run_command(const Options& options) {
         if (options.args.size() == 2 && options.args[1] == "info") {
             return run_system_info(options);
         }
+        if (options.args.size() == 2 && options.args[1] == "cpu") {
+            return run_system_cpu(options);
+        }
+        if (options.args.size() == 2 && options.args[1] == "memory") {
+            return run_system_memory(options);
+        }
+        if (options.args.size() == 2 && options.args[1] == "load") {
+            return run_system_load(options);
+        }
+        if (options.args.size() == 2 && options.args[1] == "modules") {
+            return run_system_modules(options);
+        }
     } else if (command == "process") {
         if (options.args.size() == 2 && options.args[1] == "list") {
             return run_process_list(options);
@@ -639,12 +776,70 @@ int run_command(const Options& options) {
         if (options.args.size() == 3 && options.args[1] == "inspect") {
             return run_process_inspect(options, options.args[2]);
         }
+        if (options.args.size() == 3 && options.args[1] == "environment") {
+            try {
+                const auto pid = static_cast<pid_t>(std::stoll(std::string(options.args[2])));
+                const auto result = process::environment(pid);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                const auto& env = result.value();
+                if (options.json) {
+                    std::vector<std::string> items;
+                    for (const auto& [key, value] : env) {
+                        items.push_back("{"
+                            "\"key\":" + json_string(key) +
+                            ",\"value\":" + json_string(value) +
+                            "}");
+                    }
+                    std::cout << join_json_array(items) << "\n";
+                } else {
+                    for (const auto& [key, value] : env) {
+                        std::cout << key << "=" << value << "\n";
+                    }
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid PID: " << options.args[2] << '\n';
+                return 2;
+            }
+        }
     } else if (command == "fs") {
         if (options.args.size() == 3 && options.args[1] == "usage") {
             return run_filesystem_usage(options, options.args[2]);
         }
         if (options.args.size() == 3 && options.args[1] == "info") {
             return run_filesystem_info(options, options.args[2]);
+        }
+        if (options.args.size() == 2 && options.args[1] == "mounts") {
+            const auto result = filesystem::mounts();
+            if (!result) {
+                print_error(result.error(), options.json);
+                return 1;
+            }
+            const auto& mounts = result.value();
+            if (options.json) {
+                std::vector<std::string> items;
+                for (const auto& mount : mounts) {
+                    items.push_back("{"
+                        "\"device\":" + json_string(mount.device) +
+                        ",\"mount_point\":" + json_string(mount.mount_point) +
+                        ",\"filesystem_type\":" + json_string(mount.filesystem_type) +
+                        ",\"options\":" + json_string(mount.options) +
+                        ",\"dump\":" + std::to_string(mount.dump) +
+                        ",\"pass\":" + std::to_string(mount.pass) +
+                        "}");
+                }
+                std::cout << join_json_array(items) << "\n";
+            } else {
+                for (const auto& mount : mounts) {
+                    std::cout << mount.device << " on " << mount.mount_point
+                              << " type " << mount.filesystem_type
+                              << " (" << mount.options << ")\n";
+                }
+            }
+            return 0;
         }
     } else if (command == "storage") {
         if (options.args.size() == 2 && options.args[1] == "list") {

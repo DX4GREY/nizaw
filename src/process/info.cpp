@@ -238,4 +238,42 @@ Result<ProcessInfo> inspect(pid_t pid) {
     return info;
 }
 
+Result<std::map<std::string, std::string>> environment(pid_t pid) {
+    const auto environ_path = std::filesystem::path("/proc") / std::to_string(pid) / "environ";
+    if (!std::filesystem::exists(environ_path)) {
+        return Error(ErrorCode::NotFound, "Process no longer exists", "process");
+    }
+
+    std::ifstream environ_file(environ_path, std::ios::binary);
+    if (!environ_file) {
+        if (errno == EACCES) {
+            return Error(ErrorCode::PermissionDenied, "Permission denied while reading process environment", "process");
+        }
+        return Error::from_errno(errno, ErrorCode::IoError, "process", "failed to read process environment");
+    }
+
+    std::map<std::string, std::string> env;
+    std::string buffer((std::istreambuf_iterator<char>(environ_file)), {});
+    
+    std::size_t start = 0;
+    while (start < buffer.size()) {
+        const auto equal_pos = buffer.find('=', start);
+        if (equal_pos == std::string::npos) {
+            break;
+        }
+        
+        const std::string key = buffer.substr(start, equal_pos - start);
+        const auto value_start = equal_pos + 1;
+        const auto null_pos = buffer.find('\0', value_start);
+        const std::string value = (null_pos != std::string::npos) 
+            ? buffer.substr(value_start, null_pos - value_start)
+            : buffer.substr(value_start);
+        
+        env[key] = value;
+        start = (null_pos != std::string::npos) ? null_pos + 1 : buffer.size();
+    }
+
+    return env;
+}
+
 }  // namespace nizaw::process

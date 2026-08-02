@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 #include "nizaw/result.hpp"
 
@@ -28,7 +29,17 @@ struct EntryInfo {
     std::string mount_point;
 };
 
+struct MountPoint {
+    std::string device;
+    std::string mount_point;
+    std::string filesystem_type;
+    std::string options;
+    int dump = 0;
+    int pass = 0;
+};
+
 [[nodiscard]] Result<DiskUsage> usage(const std::filesystem::path& path);
 [[nodiscard]] Result<EntryInfo> info(const std::filesystem::path& path);
+[[nodiscard]] Result<std::vector<MountPoint>> mounts();
 
 }  // namespace nizaw::filesystem

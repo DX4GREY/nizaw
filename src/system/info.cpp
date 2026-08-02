@@ -60,6 +60,22 @@ std::string format_boot_time(long long btime) {
     return out.str();
 }
 
+std::optional<std::string> parse_cpu_field(std::string_view line, std::string_view key) {
+    const auto colon_pos = line.find(':');
+    if (colon_pos == std::string::npos) {
+        return std::nullopt;
+    }
+    
+    const auto line_key = trim(std::string(line.substr(0, colon_pos)));
+    if (line_key != key) {
+        return std::nullopt;
+    }
+    
+    const auto value_start = colon_pos + 1;
+    const auto value = line.substr(value_start);
+    return trim(std::string(value));
+}
+
 }  // namespace
 
 Result<SystemInfo> info() {
@@ -123,6 +139,167 @@ Result<SystemInfo> info() {
     }
 
     return info;
+}
+
+Result<std::vector<CpuInfo>> cpu_info() {
+    std::vector<CpuInfo> cpus;
+    std::ifstream cpuinfo_file("/proc/cpuinfo");
+    if (!cpuinfo_file) {
+        return Error(ErrorCode::NotFound, "/proc/cpuinfo is unavailable", "system");
+    }
+
+    CpuInfo current{};
+    std::string line;
+    while (std::getline(cpuinfo_file, line)) {
+        if (line.empty()) {
+            if (!current.model_name.empty()) {
+                cpus.push_back(current);
+                current = CpuInfo{};
+            }
+            continue;
+        }
+
+        if (const auto model = parse_cpu_field(line, "model name")) {
+            current.model_name = std::string(*model);
+        }
+        if (const auto vendor = parse_cpu_field(line, "vendor_id")) {
+            current.vendor_id = std::string(*vendor);
+        }
+        if (const auto freq = parse_cpu_field(line, "cpu MHz")) {
+            current.frequency_mhz = static_cast<std::size_t>(std::stod(std::string(*freq)));
+        }
+        if (const auto cache = parse_cpu_field(line, "cache size")) {
+            const auto cache_str = trim(std::string(*cache));
+            const auto unit_pos = cache_str.find(" KB");
+            if (unit_pos != std::string::npos) {
+                current.cache_size_kb = static_cast<std::size_t>(std::stoul(cache_str.substr(0, unit_pos)));
+            }
+        }
+        if (const auto cores = parse_cpu_field(line, "cpu cores")) {
+            current.core_count = static_cast<std::size_t>(std::stoul(std::string(*cores)));
+        }
+    }
+
+    if (!current.model_name.empty()) {
+        cpus.push_back(current);
+    }
+
+    return cpus;
+}
+
+Result<LoadAverage> load_average() {
+    std::ifstream loadavg_file("/proc/loadavg");
+    if (!loadavg_file) {
+        return Error(ErrorCode::NotFound, "/proc/loadavg is unavailable", "system");
+    }
+
+    LoadAverage load{};
+    std::string line;
+    if (std::getline(loadavg_file, line)) {
+        std::istringstream stream(line);
+        stream >> load.one_min >> load.five_min >> load.fifteen_min;
+    }
+
+    return load;
+}
+
+Result<MemoryInfo> memory_info() {
+    std::ifstream meminfo_file("/proc/meminfo");
+    if (!meminfo_file) {
+        return Error(ErrorCode::NotFound, "/proc/meminfo is unavailable", "system");
+    }
+
+    MemoryInfo mem{};
+    std::string line;
+    while (std::getline(meminfo_file, line)) {
+        const auto separator = line.find(':');
+        if (separator == std::string::npos) {
+            continue;
+        }
+
+        const std::string key = trim(line.substr(0, separator));
+        const std::string value_str = trim(line.substr(separator + 1));
+        const auto unit_pos = value_str.find(" kB");
+        std::uint64_t value_kb = 0;
+        if (unit_pos != std::string::npos) {
+            try {
+                value_kb = static_cast<std::uint64_t>(std::stoull(value_str.substr(0, unit_pos)));
+            } catch (const std::exception&) {
+                continue;
+            }
+        }
+
+        if (key == "MemTotal") {
+            mem.total_kb = value_kb;
+        } else if (key == "MemFree") {
+            mem.free_kb = value_kb;
+        } else if (key == "MemAvailable") {
+            mem.available_kb = value_kb;
+        } else if (key == "Buffers") {
+            mem.buffers_kb = value_kb;
+        } else if (key == "Cached") {
+            mem.cached_kb = value_kb;
+        } else if (key == "Shmem") {
+            mem.shared_kb = value_kb;
+        }
+    }
+
+    return mem;
+}
+
+Result<SwapInfo> swap_info() {
+    std::ifstream meminfo_file("/proc/meminfo");
+    if (!meminfo_file) {
+        return Error(ErrorCode::NotFound, "/proc/meminfo is unavailable", "system");
+    }
+
+    SwapInfo swap{};
+    std::string line;
+    while (std::getline(meminfo_file, line)) {
+        const auto separator = line.find(':');
+        if (separator == std::string::npos) {
+            continue;
+        }
+
+        const std::string key = trim(line.substr(0, separator));
+        const std::string value_str = trim(line.substr(separator + 1));
+        const auto unit_pos = value_str.find(" kB");
+        std::uint64_t value_kb = 0;
+        if (unit_pos != std::string::npos) {
+            try {
+                value_kb = static_cast<std::uint64_t>(std::stoull(value_str.substr(0, unit_pos)));
+            } catch (const std::exception&) {
+                continue;
+            }
+        }
+
+        if (key == "SwapTotal") {
+            swap.total_kb = value_kb;
+        } else if (key == "SwapFree") {
+            swap.free_kb = value_kb;
+        }
+    }
+
+    swap.used_kb = swap.total_kb - swap.free_kb;
+    return swap;
+}
+
+Result<std::vector<std::string>> kernel_modules() {
+    std::ifstream modules_file("/proc/modules");
+    if (!modules_file) {
+        return Error(ErrorCode::NotFound, "/proc/modules is unavailable", "system");
+    }
+
+    std::vector<std::string> modules;
+    std::string line;
+    while (std::getline(modules_file, line)) {
+        const auto separator = line.find(' ');
+        if (separator != std::string::npos) {
+            modules.push_back(trim(line.substr(0, separator)));
+        }
+    }
+
+    return modules;
 }
 
 }  // namespace nizaw::system

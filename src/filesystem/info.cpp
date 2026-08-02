@@ -2,8 +2,10 @@
 
 #include <cerrno>
 #include <cstring>
+#include <fstream>
 #include <grp.h>
 #include <pwd.h>
+#include <sstream>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -125,6 +127,31 @@ Result<EntryInfo> info(const std::filesystem::path& path) {
     }
 
     return info;
+}
+
+Result<std::vector<MountPoint>> mounts() {
+    std::ifstream mounts_file("/proc/mounts");
+    if (!mounts_file) {
+        return Error(ErrorCode::NotFound, "/proc/mounts is unavailable", "filesystem");
+    }
+
+    std::vector<MountPoint> mount_points;
+    std::string line;
+    while (std::getline(mounts_file, line)) {
+        if (line.empty()) {
+            continue;
+        }
+
+        std::istringstream stream(line);
+        MountPoint mount{};
+        if (stream >> mount.device >> mount.mount_point >> mount.filesystem_type >> mount.options) {
+            if (stream >> mount.dump >> mount.pass) {
+                mount_points.push_back(mount);
+            }
+        }
+    }
+
+    return mount_points;
 }
 
 }  // namespace nizaw::filesystem

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -24,9 +25,11 @@ struct ProcessInfo {
     std::uint64_t memory_kb = 0;
     double cpu_time_seconds = 0.0;
     std::string start_time;
+    std::map<std::string, std::string> environment;
 };
 
 [[nodiscard]] Result<std::vector<ProcessInfo>> list();
 [[nodiscard]] Result<ProcessInfo> inspect(pid_t pid);
+[[nodiscard]] Result<std::map<std::string, std::string>> environment(pid_t pid);
 
 }  // namespace nizaw::process
