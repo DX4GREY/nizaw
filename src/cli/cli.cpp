@@ -106,9 +106,21 @@ void print_help() {
               << "  process list\n"
               << "  process inspect <PID>\n"
               << "  process environment <PID>\n"
+              << "  process signal <PID> <SIGNAL>\n"
+              << "  process terminate <PID> [--force]\n"
+              << "  process suspend <PID>\n"
+              << "  process resume <PID>\n"
+              << "  process nice <PID> <VALUE>\n"
               << "  fs usage <PATH>\n"
               << "  fs info <PATH>\n"
               << "  fs mounts\n"
+              << "  fs mkdir <PATH> [--recursive] [--mode <OCTAL>]\n"
+              << "  fs rm <PATH> [--recursive]\n"
+              << "  fs cp <FROM> <TO> [--recursive]\n"
+              << "  fs mv <FROM> <TO>\n"
+              << "  fs write <PATH> <CONTENT>\n"
+              << "  fs chmod <PATH> <MODE>\n"
+              << "  fs chown <PATH> <UID>:<GID>\n"
               << "  storage list\n"
               << "  storage info <DEVICE>\n"
               << "  storage iostat <DEVICE>\n"
@@ -118,6 +130,12 @@ void print_help() {
               << "  service list\n"
               << "  service status <UNIT>\n"
               << "  service inspect <UNIT>\n"
+              << "  service start <UNIT>\n"
+              << "  service stop <UNIT>\n"
+              << "  service restart <UNIT>\n"
+              << "  service reload <UNIT>\n"
+              << "  service enable <UNIT>\n"
+              << "  service disable <UNIT>\n"
               << "  security identity\n"
               << "  security capabilities\n"
               << "  plugins list [DIRECTORY]\n";
@@ -140,8 +158,8 @@ Options parse_options(int argc, char* argv[]) {
         } else if (arg == "--no-color") {
             options.no_color = true;
         } else if (!arg.empty() && arg[0] == '-') {
-            std::cerr << "Unknown option: " << arg << '\n';
-            options.help = true;
+            // Pass through unknown flags to command handlers
+            options.args.emplace_back(arg);
         } else {
             options.args.emplace_back(arg);
         }
@@ -845,6 +863,107 @@ int run_command(const Options& options) {
                 return 2;
             }
         }
+        if (options.args.size() >= 3 && options.args[1] == "signal") {
+            try {
+                const auto pid = static_cast<pid_t>(std::stoll(std::string(options.args[2])));
+                const int signal = std::stoi(options.args[3]);
+                core::WriteOptions write_opts;
+                write_opts.confirm_prompt = "Send signal " + std::to_string(signal) + " to PID " + std::to_string(pid) + "?";
+                const auto result = process::send_signal(pid, signal, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Sent signal " << signal << " to PID " << pid << "\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for signal command\n";
+                return 2;
+            }
+        }
+        if (options.args.size() >= 2 && options.args[1] == "terminate") {
+            try {
+                const auto pid = static_cast<pid_t>(std::stoll(std::string(options.args[2])));
+                core::WriteOptions write_opts;
+                write_opts.force = false;
+                if (options.args.size() > 3 && options.args[3] == "--force") {
+                    write_opts.force = true;
+                }
+                write_opts.confirm_prompt = "Terminate PID " + std::to_string(pid) + "?";
+                const auto result = process::terminate(pid, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Terminated PID " << pid << "\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for terminate command\n";
+                return 2;
+            }
+        }
+        if (options.args.size() == 3 && options.args[1] == "suspend") {
+            try {
+                const auto pid = static_cast<pid_t>(std::stoll(std::string(options.args[2])));
+                core::WriteOptions write_opts;
+                write_opts.confirm_prompt = "Suspend PID " + std::to_string(pid) + "?";
+                const auto result = process::suspend(pid, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Suspended PID " << pid << "\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid PID: " << options.args[2] << '\n';
+                return 2;
+            }
+        }
+        if (options.args.size() == 3 && options.args[1] == "resume") {
+            try {
+                const auto pid = static_cast<pid_t>(std::stoll(std::string(options.args[2])));
+                core::WriteOptions write_opts;
+                write_opts.confirm_prompt = "Resume PID " + std::to_string(pid) + "?";
+                const auto result = process::resume(pid, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Resumed PID " << pid << "\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid PID: " << options.args[2] << '\n';
+                return 2;
+            }
+        }
+        if (options.args.size() == 3 && options.args[1] == "nice") {
+            try {
+                const auto pid = static_cast<pid_t>(std::stoll(std::string(options.args[2])));
+                const int nice_value = std::stoi(options.args[3]);
+                core::WriteOptions write_opts;
+                write_opts.confirm_prompt = "Set nice value of PID " + std::to_string(pid) + " to " + std::to_string(nice_value) + "?";
+                const auto result = process::set_nice(pid, nice_value, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Set nice value of PID " << pid << " to " << nice_value << "\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for nice command\n";
+                return 2;
+            }
+        }
     } else if (command == "fs") {
         if (options.args.size() == 3 && options.args[1] == "usage") {
             return run_filesystem_usage(options, options.args[2]);
@@ -880,6 +999,191 @@ int run_command(const Options& options) {
                 }
             }
             return 0;
+        }
+        if (options.args.size() >= 2 && options.args[1] == "mkdir") {
+            try {
+                const auto path = options.args[2];
+                core::WriteOptions write_opts;
+                write_opts.recursive = false;
+                mode_t permissions = 0755;
+                
+                // Parse optional flags
+                for (std::size_t i = 3; i < options.args.size(); ++i) {
+                    if (options.args[i] == "--recursive") {
+                        write_opts.recursive = true;
+                    } else if (options.args[i] == "--mode" && i + 1 < options.args.size()) {
+                        permissions = static_cast<mode_t>(std::stoi(options.args[i + 1], nullptr, 8));
+                        ++i;
+                    }
+                }
+                
+                const auto result = filesystem::create_directory(path, write_opts, permissions);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Created directory: " << path << "\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for mkdir command\n";
+                return 2;
+            }
+        }
+        if (options.args.size() >= 2 && options.args[1] == "rm") {
+            try {
+                const auto path = options.args[2];
+                core::WriteOptions write_opts;
+                write_opts.recursive = false;
+                write_opts.confirm_prompt = "Remove '" + std::string(path) + "'?";
+                
+                for (std::size_t i = 3; i < options.args.size(); ++i) {
+                    if (options.args[i] == "--recursive") {
+                        write_opts.recursive = true;
+                    }
+                }
+                
+                const auto result = filesystem::remove(path, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Removed: " << path << "\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for rm command\n";
+                return 2;
+            }
+        }
+        if (options.args.size() >= 3 && options.args[1] == "cp") {
+            try {
+                const auto from = options.args[2];
+                const auto to = options.args[3];
+                core::WriteOptions write_opts;
+                write_opts.recursive = false;
+                
+                for (std::size_t i = 4; i < options.args.size(); ++i) {
+                    if (options.args[i] == "--recursive") {
+                        write_opts.recursive = true;
+                    }
+                }
+                
+                const auto result = filesystem::copy(from, to, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Copied '" << from << "' to '" << to << "'\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for cp command\n";
+                return 2;
+            }
+        }
+        if (options.args.size() == 4 && options.args[1] == "mv") {
+            try {
+                const auto from = options.args[2];
+                const auto to = options.args[3];
+                core::WriteOptions write_opts;
+                write_opts.confirm_prompt = "Move '" + std::string(from) + "' to '" + std::string(to) + "'?";
+                
+                const auto result = filesystem::rename(from, to, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Moved '" << from << "' to '" << to << "'\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for mv command\n";
+                return 2;
+            }
+        }
+        if (options.args.size() >= 3 && options.args[1] == "write") {
+            try {
+                const auto path = options.args[2];
+                std::string content;
+                if (options.args.size() > 3) {
+                    content = options.args[3];
+                } else {
+                    // Read from stdin if no content provided
+                    std::string line;
+                    while (std::getline(std::cin, line)) {
+                        content += line + "\n";
+                    }
+                }
+                
+                core::WriteOptions write_opts;
+                const auto result = filesystem::write_file(path, content, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Wrote " << content.size() << " bytes to '" << path << "'\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for write command\n";
+                return 2;
+            }
+        }
+        if (options.args.size() == 3 && options.args[1] == "chmod") {
+            try {
+                const auto path = options.args[2];
+                const auto mode = static_cast<mode_t>(std::stoi(options.args[3], nullptr, 8));
+                core::WriteOptions write_opts;
+                write_opts.confirm_prompt = "Change permissions of '" + std::string(path) + "' to " + options.args[3] + "?";
+                
+                const auto result = filesystem::set_permissions(path, mode, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Changed permissions of '" << path << "' to " << options.args[3] << "\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for chmod command\n";
+                return 2;
+            }
+        }
+        if (options.args.size() == 3 && options.args[1] == "chown") {
+            try {
+                const auto path = options.args[2];
+                const auto colon_pos = options.args[3].find(':');
+                if (colon_pos == std::string::npos) {
+                    std::cerr << "Invalid UID:GID format, expected UID:GID\n";
+                    return 2;
+                }
+                
+                const auto uid = static_cast<uid_t>(std::stoi(options.args[3].substr(0, colon_pos)));
+                const auto gid = static_cast<gid_t>(std::stoi(options.args[3].substr(colon_pos + 1)));
+                
+                core::WriteOptions write_opts;
+                write_opts.confirm_prompt = "Change owner of '" + std::string(path) + "' to " + options.args[3] + "?";
+                
+                const auto result = filesystem::set_owner(path, uid, gid, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Changed owner of '" << path << "' to " << options.args[3] << "\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for chown command\n";
+                return 2;
+            }
         }
     } else if (command == "storage") {
         if (options.args.size() == 2 && options.args[1] == "list") {
@@ -963,6 +1267,77 @@ int run_command(const Options& options) {
         }
         if (options.args.size() == 3 && (options.args[1] == "status" || options.args[1] == "inspect")) {
             return run_service_inspect(options, options.args[2]);
+        }
+        if (options.args.size() >= 3 && (options.args[1] == "start" || options.args[1] == "stop" || options.args[1] == "restart" || options.args[1] == "reload")) {
+            try {
+                const auto unit_name = options.args[2];
+                service::ServiceAction action;
+                if (options.args[1] == "start") {
+                    action = service::ServiceAction::Start;
+                } else if (options.args[1] == "stop") {
+                    action = service::ServiceAction::Stop;
+                } else if (options.args[1] == "restart") {
+                    action = service::ServiceAction::Restart;
+                } else {
+                    action = service::ServiceAction::Reload;
+                }
+                
+                core::WriteOptions write_opts;
+                write_opts.confirm_prompt = std::string(options.args[1]) + " service '" + unit_name + "'?";
+                
+                const auto result = service::control(unit_name, action, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << std::string(options.args[1]) + "ed service '" + unit_name + "'\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for service command\n";
+                return 2;
+            }
+        }
+        if (options.args.size() >= 3 && options.args[1] == "enable") {
+            try {
+                const auto unit_name = options.args[2];
+                core::WriteOptions write_opts;
+                write_opts.confirm_prompt = "Enable service '" + std::string(unit_name) + "' at boot?";
+                
+                const auto result = service::enable(unit_name, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Enabled service '" << unit_name << "'\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for enable command\n";
+                return 2;
+            }
+        }
+        if (options.args.size() >= 3 && options.args[1] == "disable") {
+            try {
+                const auto unit_name = options.args[2];
+                core::WriteOptions write_opts;
+                write_opts.confirm_prompt = "Disable service '" + std::string(unit_name) + "' at boot?";
+                
+                const auto result = service::disable(unit_name, write_opts);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                if (!options.json) {
+                    std::cout << "Disabled service '" << unit_name << "'\n";
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid arguments for disable command\n";
+                return 2;
+            }
         }
     } else if (command == "security") {
         if (options.args.size() == 2 && options.args[1] == "identity") {

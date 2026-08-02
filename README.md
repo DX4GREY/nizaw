@@ -31,7 +31,7 @@ Modern Linux System & CLI Framework written in C++20
 - A `nizaw::security` module that reports process identity, supplemental groups, and effective Linux capabilities.
 - A `nizaw::plugin` module that discovers and loads third-party command plugins from `.so` artifacts.
 
-### Write Operations Safety Features (New in v1.1.0)
+### Write Operations Safety Features (New in v2.0.0)
 - **WriteOptions**: dry-run, force, recursive, timeout, confirmation prompts
 - **CapabilitySet**: Linux capability checking (CAP_SYS_ADMIN, CAP_NET_ADMIN, etc.)
 - **AuditLogger**: Structured logging for all mutating operations
