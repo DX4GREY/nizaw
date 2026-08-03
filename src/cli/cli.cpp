@@ -30,6 +30,7 @@ struct Options {
     bool verbose = false;
     bool quiet = false;
     bool no_color = false;
+    bool yes = false;
     std::vector<std::string> args;
 };
 
@@ -95,7 +96,7 @@ void print_error(const Error& error, bool json) {
 }
 
 void print_help() {
-    std::cout << "Usage: nizaw [--help] [--version] [--json] [--verbose] [--quiet] [--no-color] <command> [args...]\n"
+    std::cout << "Usage: nizaw [--help] [--version] [--json] [--verbose] [--quiet] [--no-color] [--yes|-y] <command> [args...]\n"
               << "Commands:\n"
               << "  system info\n"
               << "  system cpu\n"
@@ -157,6 +158,8 @@ Options parse_options(int argc, char* argv[]) {
             options.quiet = true;
         } else if (arg == "--no-color") {
             options.no_color = true;
+        } else if (arg == "--yes" || arg == "-y") {
+            options.yes = true;
         } else if (!arg.empty() && arg[0] == '-') {
             // Pass through unknown flags to command handlers
             options.args.emplace_back(arg);
@@ -801,6 +804,12 @@ int run_plugins_list(const Options& options, std::string_view directory) {
     return 0;
 }
 
+void apply_yes_flag(core::WriteOptions& write_opts, const Options& options) {
+    if (options.yes) {
+        write_opts.force = true;
+    }
+}
+
 int run_command(const Options& options) {
     if (options.args.empty()) {
         print_help();
@@ -869,6 +878,7 @@ int run_command(const Options& options) {
                 const int signal = std::stoi(options.args[3]);
                 core::WriteOptions write_opts;
                 write_opts.confirm_prompt = "Send signal " + std::to_string(signal) + " to PID " + std::to_string(pid) + "?";
+                apply_yes_flag(write_opts, options);
                 const auto result = process::send_signal(pid, signal, write_opts);
                 if (!result) {
                     print_error(result.error(), options.json);
@@ -891,6 +901,9 @@ int run_command(const Options& options) {
                 if (options.args.size() > 3 && options.args[3] == "--force") {
                     write_opts.force = true;
                 }
+                if (options.yes) {
+                    write_opts.force = true;
+                }
                 write_opts.confirm_prompt = "Terminate PID " + std::to_string(pid) + "?";
                 const auto result = process::terminate(pid, write_opts);
                 if (!result) {
@@ -911,6 +924,7 @@ int run_command(const Options& options) {
                 const auto pid = static_cast<pid_t>(std::stoll(std::string(options.args[2])));
                 core::WriteOptions write_opts;
                 write_opts.confirm_prompt = "Suspend PID " + std::to_string(pid) + "?";
+                apply_yes_flag(write_opts, options);
                 const auto result = process::suspend(pid, write_opts);
                 if (!result) {
                     print_error(result.error(), options.json);
@@ -930,6 +944,7 @@ int run_command(const Options& options) {
                 const auto pid = static_cast<pid_t>(std::stoll(std::string(options.args[2])));
                 core::WriteOptions write_opts;
                 write_opts.confirm_prompt = "Resume PID " + std::to_string(pid) + "?";
+                apply_yes_flag(write_opts, options);
                 const auto result = process::resume(pid, write_opts);
                 if (!result) {
                     print_error(result.error(), options.json);
@@ -950,6 +965,7 @@ int run_command(const Options& options) {
                 const int nice_value = std::stoi(options.args[3]);
                 core::WriteOptions write_opts;
                 write_opts.confirm_prompt = "Set nice value of PID " + std::to_string(pid) + " to " + std::to_string(nice_value) + "?";
+                apply_yes_flag(write_opts, options);
                 const auto result = process::set_nice(pid, nice_value, write_opts);
                 if (!result) {
                     print_error(result.error(), options.json);
@@ -1037,6 +1053,7 @@ int run_command(const Options& options) {
                 core::WriteOptions write_opts;
                 write_opts.recursive = false;
                 write_opts.confirm_prompt = "Remove '" + std::string(path) + "'?";
+                apply_yes_flag(write_opts, options);
                 
                 for (std::size_t i = 3; i < options.args.size(); ++i) {
                     if (options.args[i] == "--recursive") {
@@ -1091,6 +1108,7 @@ int run_command(const Options& options) {
                 const auto to = options.args[3];
                 core::WriteOptions write_opts;
                 write_opts.confirm_prompt = "Move '" + std::string(from) + "' to '" + std::string(to) + "'?";
+                apply_yes_flag(write_opts, options);
                 
                 const auto result = filesystem::rename(from, to, write_opts);
                 if (!result) {
@@ -1141,6 +1159,7 @@ int run_command(const Options& options) {
                 const auto mode = static_cast<mode_t>(std::stoi(options.args[3], nullptr, 8));
                 core::WriteOptions write_opts;
                 write_opts.confirm_prompt = "Change permissions of '" + std::string(path) + "' to " + options.args[3] + "?";
+                apply_yes_flag(write_opts, options);
                 
                 const auto result = filesystem::set_permissions(path, mode, write_opts);
                 if (!result) {
@@ -1170,6 +1189,7 @@ int run_command(const Options& options) {
                 
                 core::WriteOptions write_opts;
                 write_opts.confirm_prompt = "Change owner of '" + std::string(path) + "' to " + options.args[3] + "?";
+                apply_yes_flag(write_opts, options);
                 
                 const auto result = filesystem::set_owner(path, uid, gid, write_opts);
                 if (!result) {
@@ -1284,6 +1304,7 @@ int run_command(const Options& options) {
                 
                 core::WriteOptions write_opts;
                 write_opts.confirm_prompt = std::string(options.args[1]) + " service '" + unit_name + "'?";
+                apply_yes_flag(write_opts, options);
                 
                 const auto result = service::control(unit_name, action, write_opts);
                 if (!result) {
@@ -1304,6 +1325,7 @@ int run_command(const Options& options) {
                 const auto unit_name = options.args[2];
                 core::WriteOptions write_opts;
                 write_opts.confirm_prompt = "Enable service '" + std::string(unit_name) + "' at boot?";
+                apply_yes_flag(write_opts, options);
                 
                 const auto result = service::enable(unit_name, write_opts);
                 if (!result) {
@@ -1324,6 +1346,7 @@ int run_command(const Options& options) {
                 const auto unit_name = options.args[2];
                 core::WriteOptions write_opts;
                 write_opts.confirm_prompt = "Disable service '" + std::string(unit_name) + "' at boot?";
+                apply_yes_flag(write_opts, options);
                 
                 const auto result = service::disable(unit_name, write_opts);
                 if (!result) {
