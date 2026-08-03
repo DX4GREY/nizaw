@@ -220,10 +220,41 @@ struct ProcessInfo {
     std::uint64_t memory_kb = 0;
     double cpu_time_seconds = 0.0;
     std::string start_time;
+    std::map<std::string, std::string> environment;
+};
+
+struct ResourceLimits {
+    std::uint64_t max_cpu_time_seconds = 0;
+    std::uint64_t max_file_size_bytes = 0;
+    std::uint64_t max_data_size_bytes = 0;
+    std::uint64_t max_stack_size_bytes = 0;
+    std::uint64_t max_core_file_size_bytes = 0;
+    std::uint64_t max_resident_set_bytes = 0;
+    std::uint64_t max_processes = 0;
+    std::uint64_t max_open_files = 0;
+    std::uint64_t max_locked_memory_bytes = 0;
+    std::uint64_t max_address_space_bytes = 0;
+    std::uint64_t max_file_locks = 0;
+    std::uint64_t max_pending_signals = 0;
+    std::uint64_t max_msgqueue_size_bytes = 0;
+    std::uint64_t max_nice_priority = 0;
+    std::uint64_t max_realtime_priority = 0;
+    std::uint64_t max_realtime_timeout_us = 0;
+};
+
+struct IoStats {
+    std::uint64_t read_bytes = 0;
+    std::uint64_t write_bytes = 0;
+    std::uint64_t cancelled_write_bytes = 0;
+    std::uint64_t syscr = 0;  // read syscalls
+    std::uint64_t syscw = 0;  // write syscalls
 };
 
 Result<std::vector<ProcessInfo>> list();
 Result<ProcessInfo> inspect(pid_t pid);
+Result<std::map<std::string, std::string>> environment(pid_t pid);
+Result<ResourceLimits> resource_limits(pid_t pid);
+Result<IoStats> io_stats(pid_t pid);
 
 // --- write operations ---
 Result<void> send_signal(pid_t pid, int signal,
@@ -325,6 +356,53 @@ struct Device {
 
 Result<std::vector<Device>> enumerate();
 Result<Device> inspect(const std::string& device);
+Result<IoStats> iostat(const std::string& device);
+
+enum class FilesystemType {
+    Unknown,
+    Ext2,
+    Ext3,
+    Ext4,
+    Xfs,
+    Btrfs,
+    Tmpfs,
+    Proc,
+    Sysfs,
+    Devtmpfs,
+    Devpts,
+    Securityfs,
+    Cgroup,
+    Cgroup2,
+    Pstore,
+    Efivarfs,
+    Debugfs,
+    Tracefs,
+    Nfs,
+    Cifs,
+    Smb3,
+    Fuse,
+    Overlay,
+    Squashfs,
+    Iso9660,
+    Udf,
+    Fat,
+    Vfat,
+    Exfat,
+    Ntfs,
+    Hfs,
+    HfsPlus,
+    Other
+};
+
+struct FilesystemInfo {
+    std::string device;
+    std::string mount_point;
+    std::string fs_type;
+    FilesystemType type = FilesystemType::Unknown;
+    std::string options;
+};
+
+Result<std::vector<FilesystemInfo>> filesystems();
 
 } // namespace nizaw::storage
 ```
@@ -349,6 +427,14 @@ struct InterfaceInfo {
     int mtu = 0;
     std::vector<std::string> flags;
     std::vector<InterfaceAddress> addresses;
+    std::uint64_t rx_bytes = 0;
+    std::uint64_t tx_bytes = 0;
+    std::uint64_t rx_packets = 0;
+    std::uint64_t tx_packets = 0;
+    std::uint64_t rx_errors = 0;
+    std::uint64_t tx_errors = 0;
+    std::uint64_t rx_dropped = 0;
+    std::uint64_t tx_dropped = 0;
 };
 
 Result<std::vector<InterfaceInfo>> list();

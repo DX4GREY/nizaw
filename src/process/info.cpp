@@ -441,4 +441,115 @@ Result<void> set_nice(pid_t pid, int nice_value, const core::WriteOptions& optio
     return {};
 }
 
+Result<ResourceLimits> resource_limits(pid_t pid) {
+    (void)pid;  // Currently returns calling process limits; per-pid limits require /proc/pid/limits parsing
+
+    ResourceLimits limits{};
+
+    rlimit rlim;
+    
+    if (getrlimit(RLIMIT_CPU, &rlim) == 0) {
+        limits.max_cpu_time_seconds = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_FSIZE, &rlim) == 0) {
+        limits.max_file_size_bytes = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_DATA, &rlim) == 0) {
+        limits.max_data_size_bytes = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_STACK, &rlim) == 0) {
+        limits.max_stack_size_bytes = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_CORE, &rlim) == 0) {
+        limits.max_core_file_size_bytes = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_RSS, &rlim) == 0) {
+        limits.max_resident_set_bytes = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_NPROC, &rlim) == 0) {
+        limits.max_processes = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_NOFILE, &rlim) == 0) {
+        limits.max_open_files = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_MEMLOCK, &rlim) == 0) {
+        limits.max_locked_memory_bytes = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_AS, &rlim) == 0) {
+        limits.max_address_space_bytes = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_LOCKS, &rlim) == 0) {
+        limits.max_file_locks = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_SIGPENDING, &rlim) == 0) {
+        limits.max_pending_signals = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_MSGQUEUE, &rlim) == 0) {
+        limits.max_msgqueue_size_bytes = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_NICE, &rlim) == 0) {
+        limits.max_nice_priority = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_RTPRIO, &rlim) == 0) {
+        limits.max_realtime_priority = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+    if (getrlimit(RLIMIT_RTTIME, &rlim) == 0) {
+        limits.max_realtime_timeout_us = static_cast<std::uint64_t>(rlim.rlim_max);
+    }
+
+    return limits;
+}
+
+Result<IoStats> io_stats(pid_t pid) {
+    const auto io_path = std::filesystem::path("/proc") / std::to_string(pid) / "io";
+    if (!std::filesystem::exists(io_path)) {
+        return Error(ErrorCode::NotFound, "Process I/O stats not available", "process");
+    }
+
+    std::ifstream io_file(io_path);
+    if (!io_file) {
+        return Error::from_errno(errno, ErrorCode::IoError, "process",
+                                "failed to read process I/O stats");
+    }
+
+    IoStats stats{};
+    std::string line;
+    while (std::getline(io_file, line)) {
+        const auto separator = line.find(':');
+        if (separator == std::string::npos) {
+            continue;
+        }
+        const std::string key = trim(line.substr(0, separator));
+        const std::string value = trim(line.substr(separator + 1));
+
+        if (key == "rchar") {
+            // Total bytes read from storage
+        } else if (key == "wchar") {
+            // Total bytes written to storage
+        } else if (key == "syscr") {
+            if (const auto parsed = parse_u64(value)) {
+                stats.syscr = *parsed;
+            }
+        } else if (key == "syscw") {
+            if (const auto parsed = parse_u64(value)) {
+                stats.syscw = *parsed;
+            }
+        } else if (key == "read_bytes") {
+            if (const auto parsed = parse_u64(value)) {
+                stats.read_bytes = *parsed;
+            }
+        } else if (key == "write_bytes") {
+            if (const auto parsed = parse_u64(value)) {
+                stats.write_bytes = *parsed;
+            }
+        } else if (key == "cancelled_write_bytes") {
+            if (const auto parsed = parse_u64(value)) {
+                stats.cancelled_write_bytes = *parsed;
+            }
+        }
+    }
+
+    return stats;
+}
+
 }  // namespace nizaw::process

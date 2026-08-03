@@ -125,9 +125,12 @@ void print_help() {
               << "  storage list\n"
               << "  storage info <DEVICE>\n"
               << "  storage iostat <DEVICE>\n"
+              << "  storage filesystems\n"
               << "  network interfaces\n"
               << "  network info <IFACE>\n"
               << "  network connections\n"
+              << "  process resource-limits <PID>\n"
+              << "  process io-stats <PID>\n"
               << "  service list\n"
               << "  service status <UNIT>\n"
               << "  service inspect <UNIT>\n"
@@ -980,6 +983,88 @@ int run_command(const Options& options) {
                 return 2;
             }
         }
+        if (options.args.size() == 3 && options.args[1] == "resource-limits") {
+            try {
+                const auto pid = static_cast<pid_t>(std::stoll(std::string(options.args[2])));
+                const auto result = process::resource_limits(pid);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                const auto& limits = result.value();
+                if (options.json) {
+                    std::cout << "{"
+                              << "\"max_cpu_time_seconds\":" << limits.max_cpu_time_seconds
+                              << ",\"max_file_size_bytes\":" << limits.max_file_size_bytes
+                              << ",\"max_data_size_bytes\":" << limits.max_data_size_bytes
+                              << ",\"max_stack_size_bytes\":" << limits.max_stack_size_bytes
+                              << ",\"max_core_file_size_bytes\":" << limits.max_core_file_size_bytes
+                              << ",\"max_resident_set_bytes\":" << limits.max_resident_set_bytes
+                              << ",\"max_processes\":" << limits.max_processes
+                              << ",\"max_open_files\":" << limits.max_open_files
+                              << ",\"max_locked_memory_bytes\":" << limits.max_locked_memory_bytes
+                              << ",\"max_address_space_bytes\":" << limits.max_address_space_bytes
+                              << ",\"max_file_locks\":" << limits.max_file_locks
+                              << ",\"max_pending_signals\":" << limits.max_pending_signals
+                              << ",\"max_msgqueue_size_bytes\":" << limits.max_msgqueue_size_bytes
+                              << ",\"max_nice_priority\":" << limits.max_nice_priority
+                              << ",\"max_realtime_priority\":" << limits.max_realtime_priority
+                              << ",\"max_realtime_timeout_us\":" << limits.max_realtime_timeout_us
+                              << "}\n";
+                } else {
+                    print_row("Max CPU time", std::to_string(limits.max_cpu_time_seconds) + " seconds");
+                    print_row("Max file size", std::to_string(limits.max_file_size_bytes) + " bytes");
+                    print_row("Max data size", std::to_string(limits.max_data_size_bytes) + " bytes");
+                    print_row("Max stack size", std::to_string(limits.max_stack_size_bytes) + " bytes");
+                    print_row("Max core file size", std::to_string(limits.max_core_file_size_bytes) + " bytes");
+                    print_row("Max resident set", std::to_string(limits.max_resident_set_bytes) + " bytes");
+                    print_row("Max processes", std::to_string(limits.max_processes));
+                    print_row("Max open files", std::to_string(limits.max_open_files));
+                    print_row("Max locked memory", std::to_string(limits.max_locked_memory_bytes) + " bytes");
+                    print_row("Max address space", std::to_string(limits.max_address_space_bytes) + " bytes");
+                    print_row("Max file locks", std::to_string(limits.max_file_locks));
+                    print_row("Max pending signals", std::to_string(limits.max_pending_signals));
+                    print_row("Max msgqueue size", std::to_string(limits.max_msgqueue_size_bytes) + " bytes");
+                    print_row("Max nice priority", std::to_string(limits.max_nice_priority));
+                    print_row("Max realtime priority", std::to_string(limits.max_realtime_priority));
+                    print_row("Max realtime timeout", std::to_string(limits.max_realtime_timeout_us) + " us");
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid PID: " << options.args[2] << '\n';
+                return 2;
+            }
+        }
+        if (options.args.size() == 3 && options.args[1] == "io-stats") {
+            try {
+                const auto pid = static_cast<pid_t>(std::stoll(std::string(options.args[2])));
+                const auto result = process::io_stats(pid);
+                if (!result) {
+                    print_error(result.error(), options.json);
+                    return 1;
+                }
+                const auto& stats = result.value();
+                if (options.json) {
+                    std::cout << "{"
+                              << "\"read_bytes\":" << stats.read_bytes
+                              << ",\"write_bytes\":" << stats.write_bytes
+                              << ",\"cancelled_write_bytes\":" << stats.cancelled_write_bytes
+                              << ",\"syscr\":" << stats.syscr
+                              << ",\"syscw\":" << stats.syscw
+                              << "}\n";
+                } else {
+                    print_row("Read bytes", std::to_string(stats.read_bytes));
+                    print_row("Write bytes", std::to_string(stats.write_bytes));
+                    print_row("Cancelled write bytes", std::to_string(stats.cancelled_write_bytes));
+                    print_row("Read syscalls", std::to_string(stats.syscr));
+                    print_row("Write syscalls", std::to_string(stats.syscw));
+                }
+                return 0;
+            } catch (const std::exception&) {
+                std::cerr << "Invalid PID: " << options.args[2] << '\n';
+                return 2;
+            }
+        }
     } else if (command == "fs") {
         if (options.args.size() == 3 && options.args[1] == "usage") {
             return run_filesystem_usage(options, options.args[2]);
@@ -1239,6 +1324,32 @@ int run_command(const Options& options) {
                 print_row("Read bytes", std::to_string(stats.read_bytes));
                 print_row("Write bytes", std::to_string(stats.write_bytes));
                 print_row("IO time", std::to_string(stats.io_time_ms) + " ms");
+            }
+            return 0;
+        }
+        if (options.args.size() == 2 && options.args[1] == "filesystems") {
+            const auto result = storage::filesystems();
+            if (!result) {
+                print_error(result.error(), options.json);
+                return 1;
+            }
+            const auto& filesystems = result.value();
+            if (options.json) {
+                std::vector<std::string> items;
+                for (const auto& fs : filesystems) {
+                    items.push_back("{"
+                        "\"device\":" + json_string(fs.device) +
+                        ",\"mount_point\":" + json_string(fs.mount_point) +
+                        ",\"fs_type\":" + json_string(fs.fs_type) +
+                        ",\"options\":" + json_string(fs.options) +
+                        "}");
+                }
+                std::cout << join_json_array(items) << "\n";
+            } else {
+                for (const auto& fs : filesystems) {
+                    std::cout << fs.device << " on " << fs.mount_point
+                              << " type " << fs.fs_type << " (" << fs.options << ")\n";
+                }
             }
             return 0;
         }

@@ -11,10 +11,10 @@ namespace nizaw::core {
 /// `configure_file`; for Phase 1 they are set directly here to match
 /// `CMakeLists.txt`'s `project()` call).
 inline constexpr unsigned kVersionMajor = 2;
-inline constexpr unsigned kVersionMinor = 0;
-inline constexpr unsigned kVersionPatch = 1;
+inline constexpr unsigned kVersionMinor = 1;
+inline constexpr unsigned kVersionPatch = 0;
 
-/// Human-readable version string, e.g. "2.0.1".
+/// Human-readable version string, e.g. "2.1.0".
 [[nodiscard]] std::string version_string();
 
 struct Version {

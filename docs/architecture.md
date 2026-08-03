@@ -1,7 +1,7 @@
 # Nizaw — Architecture
 
 Status: Stable architecture and implementation
-Version: 2.0.1
+Version: 2.1.0
 
 ## 1. Purpose
 
@@ -67,6 +67,16 @@ Explicitly **out of scope** for the foreseeable roadmap (see Non-goals).
   to future releases.
 - Write operations require explicit confirmation and capability checks for
   safety (see §9 below).
+
+## 5. Data sources
+
+Nizaw reads from the following Linux kernel interfaces:
+
+- `/proc` - Process information, system statistics, network connections
+- `/sys` - Hardware information, block devices, network interface statistics
+- `/etc/os-release` - Distribution detection
+- D-Bus (via libsystemd) - systemd service management
+- Standard C/C++ libraries - Filesystem operations, time, memory management
 
 ## 5. High-level architecture
 

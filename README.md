@@ -2,7 +2,7 @@
 
 Modern Linux System & CLI Framework written in C++20
 
-> **Status:** Stable v2.0.1 — Production-ready modular library with comprehensive CLI support, write operations, and integrated tests.
+> **Status:** Stable v2.1.0 — Production-ready modular library with comprehensive CLI support, write operations, and integrated tests.
 
 ## Features
 
@@ -46,6 +46,7 @@ Modern Linux System & CLI Framework written in C++20
 - Network interface enumeration: name, index, state, MAC address, MTU, flags
 - IPv4/IPv6 address reporting with netmask and broadcast
 - Detailed interface inspection with all addresses
+- Network interface statistics: rx/tx bytes, packets, errors, drops via `/sys/class/net/*/statistics`
 - Network connection listing with protocol, local/remote addresses and ports, UID, inode
 
 ### Service Module (`nizaw::service`)

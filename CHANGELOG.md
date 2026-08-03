@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.0 (current)
+
+### Added
+- Network interface statistics: `rx_bytes`, `tx_bytes`, `rx_packets`, `tx_packets`, `rx_errors`, `tx_errors`, `rx_dropped`, `tx_dropped` in `InterfaceInfo`
+- Process resource limits: `process::resource_limits(pid)` returning `ResourceLimits` struct with all RLIMIT_* values
+- Process I/O statistics: `process::io_stats(pid)` returning `IoStats` with read/write bytes, syscalls, cancelled writes
+- Storage filesystem enumeration: `storage::filesystems()` returning list of mounted filesystems with type detection
+- `FilesystemType` enum with 30+ filesystem types (ext4, xfs, btrfs, tmpfs, nfs, cifs, overlay, etc.)
+- `FilesystemInfo` struct with device, mount_point, fs_type, type, and options
+
+### Changed
+- Network `list()` and `inspect()` now populate statistics fields from `/sys/class/net/*/statistics`
+
 ## 2.0.1 (current)
 
 ### Added

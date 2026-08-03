@@ -29,10 +29,39 @@ struct ProcessInfo {
     std::map<std::string, std::string> environment;
 };
 
+struct ResourceLimits {
+    std::uint64_t max_cpu_time_seconds = 0;
+    std::uint64_t max_file_size_bytes = 0;
+    std::uint64_t max_data_size_bytes = 0;
+    std::uint64_t max_stack_size_bytes = 0;
+    std::uint64_t max_core_file_size_bytes = 0;
+    std::uint64_t max_resident_set_bytes = 0;
+    std::uint64_t max_processes = 0;
+    std::uint64_t max_open_files = 0;
+    std::uint64_t max_locked_memory_bytes = 0;
+    std::uint64_t max_address_space_bytes = 0;
+    std::uint64_t max_file_locks = 0;
+    std::uint64_t max_pending_signals = 0;
+    std::uint64_t max_msgqueue_size_bytes = 0;
+    std::uint64_t max_nice_priority = 0;
+    std::uint64_t max_realtime_priority = 0;
+    std::uint64_t max_realtime_timeout_us = 0;
+};
+
+struct IoStats {
+    std::uint64_t read_bytes = 0;
+    std::uint64_t write_bytes = 0;
+    std::uint64_t cancelled_write_bytes = 0;
+    std::uint64_t syscr = 0;  // read syscalls
+    std::uint64_t syscw = 0;  // write syscalls
+};
+
 // Read operations
 [[nodiscard]] Result<std::vector<ProcessInfo>> list();
 [[nodiscard]] Result<ProcessInfo> inspect(pid_t pid);
 [[nodiscard]] Result<std::map<std::string, std::string>> environment(pid_t pid);
+[[nodiscard]] Result<ResourceLimits> resource_limits(pid_t pid);
+[[nodiscard]] Result<IoStats> io_stats(pid_t pid);
 
 // Write operations
 

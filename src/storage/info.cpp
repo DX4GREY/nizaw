@@ -187,4 +187,76 @@ Result<IoStats> iostat(const std::string& device) {
     return Error(ErrorCode::NotFound, "Device not found in /proc/diskstats", "storage");
 }
 
+FilesystemType string_to_filesystem_type(const std::string& fs_type) {
+    if (fs_type == "ext2") return FilesystemType::Ext2;
+    if (fs_type == "ext3") return FilesystemType::Ext3;
+    if (fs_type == "ext4") return FilesystemType::Ext4;
+    if (fs_type == "xfs") return FilesystemType::Xfs;
+    if (fs_type == "btrfs") return FilesystemType::Btrfs;
+    if (fs_type == "tmpfs") return FilesystemType::Tmpfs;
+    if (fs_type == "proc") return FilesystemType::Proc;
+    if (fs_type == "sysfs") return FilesystemType::Sysfs;
+    if (fs_type == "devtmpfs") return FilesystemType::Devtmpfs;
+    if (fs_type == "devpts") return FilesystemType::Devpts;
+    if (fs_type == "securityfs") return FilesystemType::Securityfs;
+    if (fs_type == "cgroup") return FilesystemType::Cgroup;
+    if (fs_type == "cgroup2") return FilesystemType::Cgroup2;
+    if (fs_type == "pstore") return FilesystemType::Pstore;
+    if (fs_type == "efivarfs") return FilesystemType::Efivarfs;
+    if (fs_type == "debugfs") return FilesystemType::Debugfs;
+    if (fs_type == "tracefs") return FilesystemType::Tracefs;
+    if (fs_type == "nfs") return FilesystemType::Nfs;
+    if (fs_type == "nfs4") return FilesystemType::Nfs;
+    if (fs_type == "cifs") return FilesystemType::Cifs;
+    if (fs_type == "smb3") return FilesystemType::Smb3;
+    if (fs_type == "fuse") return FilesystemType::Fuse;
+    if (fs_type == "overlay") return FilesystemType::Overlay;
+    if (fs_type == "squashfs") return FilesystemType::Squashfs;
+    if (fs_type == "iso9660") return FilesystemType::Iso9660;
+    if (fs_type == "udf") return FilesystemType::Udf;
+    if (fs_type == "fat") return FilesystemType::Fat;
+    if (fs_type == "vfat") return FilesystemType::Vfat;
+    if (fs_type == "exfat") return FilesystemType::Exfat;
+    if (fs_type == "ntfs") return FilesystemType::Ntfs;
+    if (fs_type == "hfs") return FilesystemType::Hfs;
+    if (fs_type == "hfsplus") return FilesystemType::HfsPlus;
+    return FilesystemType::Other;
+}
+
+Result<std::vector<FilesystemInfo>> filesystems() {
+    std::vector<FilesystemInfo> result;
+    
+    std::ifstream mounts("/proc/mounts");
+    if (!mounts) {
+        return Error(ErrorCode::NotFound, "/proc/mounts is unavailable", "storage");
+    }
+    
+    std::string line;
+    while (std::getline(mounts, line)) {
+        if (line.empty()) {
+            continue;
+        }
+        
+        std::istringstream stream(line);
+        std::string device, mount_point, fs_type, options;
+        unsigned long dump = 0, passno = 0;
+        
+        // Format: device mount_point fs_type options dump passno
+        if (!(stream >> device >> mount_point >> fs_type >> options >> dump >> passno)) {
+            continue;
+        }
+        
+        FilesystemInfo info;
+        info.device = device;
+        info.mount_point = mount_point;
+        info.fs_type = fs_type;
+        info.type = string_to_filesystem_type(fs_type);
+        info.options = options;
+        
+        result.push_back(std::move(info));
+    }
+    
+    return result;
+}
+
 }  // namespace nizaw::storage

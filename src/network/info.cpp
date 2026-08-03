@@ -226,6 +226,28 @@ std::string operstate(const std::string& name) {
     return value.empty() ? "unknown" : value;
 }
 
+std::uint64_t read_stat(const std::string& name, const std::string& stat_name) {
+    const std::filesystem::path stat_path = std::filesystem::path("/sys/class/net") / name / "statistics" / stat_name;
+    std::ifstream input(stat_path);
+    if (!input) {
+        return 0;
+    }
+    std::uint64_t value = 0;
+    input >> value;
+    return value;
+}
+
+void fill_interface_statistics(InterfaceInfo& info) {
+    info.rx_bytes = read_stat(info.name, "rx_bytes");
+    info.tx_bytes = read_stat(info.name, "tx_bytes");
+    info.rx_packets = read_stat(info.name, "rx_packets");
+    info.tx_packets = read_stat(info.name, "tx_packets");
+    info.rx_errors = read_stat(info.name, "rx_errors");
+    info.tx_errors = read_stat(info.name, "tx_errors");
+    info.rx_dropped = read_stat(info.name, "rx_dropped");
+    info.tx_dropped = read_stat(info.name, "tx_dropped");
+}
+
 Result<void> fill_interface_details(InterfaceInfo& info) {
     const int fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) {
@@ -288,8 +310,10 @@ Result<std::vector<InterfaceInfo>> list() {
     std::vector<InterfaceInfo> result;
     for (auto& [name, iface] : interfaces) {
         if (auto error = fill_interface_details(iface); error) {
-            result.push_back(std::move(iface));
+            continue;
         }
+        fill_interface_statistics(iface);
+        result.push_back(std::move(iface));
     }
 
     return result;
