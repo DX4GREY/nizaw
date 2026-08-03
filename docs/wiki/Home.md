@@ -68,7 +68,7 @@ cmake --build build --parallel --target nizaw
 
 ## Project status
 
-**Version:** 1.0.2
+**Version:** 2.0.1
 
 The project currently targets Linux x86_64 systems with C++20 and builds a complete modular library plus a CLI executable. The default build includes all modules (core, system, process, filesystem, storage, network, service, security, plugin), tests, and the `nizaw` CLI. Examples can be enabled with `-DNIZAW_BUILD_EXAMPLES=ON`.
 

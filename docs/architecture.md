@@ -1,7 +1,7 @@
 # Nizaw — Architecture
 
 Status: Stable architecture and implementation
-Version: 2.0.x
+Version: 2.0.1
 
 ## 1. Purpose
 
@@ -46,7 +46,7 @@ Explicitly **out of scope** for the foreseeable roadmap (see Non-goals).
 
 ## 4. Non-goals
 
-- **Not** a replacement for `systemd` itself, a init system, or a service
+- **Not** a replacement for `systemd` itself, an init system, or a service
   supervisor. The `service` module *observes* systemd (and is designed so
   other backends could be added later); it does not implement one.
 - **Not** a privilege-escalation or security-bypass tool. `nizaw security`
@@ -65,6 +65,8 @@ Explicitly **out of scope** for the foreseeable roadmap (see Non-goals).
   are deferred to future releases.
 - Network configuration (interface IP assignment, routing, DNS) is deferred
   to future releases.
+- Write operations require explicit confirmation and capability checks for
+  safety (see §9 below).
 
 ## 5. High-level architecture
 
@@ -175,7 +177,22 @@ dependency — see `dependency-policy.md` for the reasoning). Log output never
 includes secrets, credentials, or full environment dumps. The CLI's
 `--verbose`/`--quiet` flags map onto the logger's level filter.
 
-## 10. Threading model
+## 10. Write operations safety
+
+All write operations (filesystem manipulation, process control, service
+management) accept a `core::WriteOptions` parameter that provides:
+
+- `dry_run` — validate without executing
+- `force` — skip confirmation prompts
+- `recursive` — apply recursively for directory operations
+- `timeout` — optional timeout for long-running operations
+- `confirm_prompt` — custom confirmation message
+
+Write operations also perform capability checks via `CapabilitySet` before
+attempting privileged operations. The `AuditLogger` singleton logs all
+mutating operations for security and compliance purposes.
+
+## 11. Threading model
 
 The modules are designed to be **synchronous and single-threaded by
 default** — process/storage/network enumeration are inherently bounded,
@@ -187,7 +204,7 @@ Where module state exists, it is instance-owned (no global mutable state),
 so callers can already parallelize across independent module calls if they
 choose.
 
-## 11. Memory management
+## 12. Memory management
 
 RAII throughout; smart pointers (`std::unique_ptr` primarily) for owned
 dynamic resources such as loaded plugin handles; raw pointers only for
@@ -195,19 +212,19 @@ non-owning views. File descriptors, `DIR*` handles from `/proc` iteration,
 and `dlopen` handles are always wrapped in RAII guards so an early `return`
 from a `Result`-returning function can never leak a resource.
 
-## 12. API stability strategy
+## 13. API stability strategy
 
 Pre-1.0 (`v0.x`), the public API is allowed to break between minor versions,
-but every breaking change must be called out in `CHANGELOG.md`. From `v1.0.0`
+but every breaking change must be called out in `CHANGELOG.md`. From `v2.0.0`
 onward, Nizaw follows semantic versioning on the public headers in
 `include/nizaw/`: patch = bug fixes only, minor = additive/non-breaking API,
 major = breaking. ABI stability (safe to swap the shared library without
-recompiling consumers) is a stated **goal for a post-1.0 milestone**, not a
+recompiling consumers) is a stated **goal for a post-2.0 milestone**, not a
 See `api-design.md` §5 for what that will require
 (pimpl-heavy public classes, no virtual dispatch across the ABI boundary,
 frozen struct layouts, etc.).
 
-## 13. Resolved design decisions
+## 14. Resolved design decisions
 
 These were flagged as open during early design and have since been resolved:
 

@@ -31,13 +31,13 @@ nizaw
 
 | Module | Responsibility | Why it exists |
 | --- | --- | --- |
-| `core` | Error handling (`nizaw::Error`, `nizaw::ErrorCode`), logging (`nizaw::core::Logger`), platform detection (`nizaw::core::detect`), environment helpers (`nizaw::core::env`), version metadata (`nizaw::core::version`) | Provides the shared base layer for the rest of the framework |
-| `system` | Hostname, kernel info, uptime, boot time, CPU count, page size | Lets applications ask basic host questions in a structured way |
-| `process` | Process enumeration and inspection via `/proc` | Useful for debugging, monitoring, and process inventory |
-| `filesystem` | Disk usage, filesystem metadata, permissions, ownership, symlinks | Useful for diagnostics and storage visibility |
-| `storage` | Block device enumeration and metadata from `/sys/block` | Gives visibility into disks, block devices, and storage topology |
-| `network` | Interface enumeration and address reporting via `getifaddrs`/ioctl/netlink | Helps inspect networking state without relying on shell wrappers |
-| `service` | systemd unit listing/status via D-Bus | Makes service state visible in a consistent format |
+| `core` | Error handling (`nizaw::Error`, `nizaw::ErrorCode`, `Result<T>`), logging (`nizaw::core::Logger`), platform detection (`nizaw::core::detect`), environment helpers (`nizaw::core::env`), version metadata (`nizaw::core::version`), write operations infrastructure (`WriteOptions`, `CapabilitySet`, `AuditLogger`) | Provides the shared base layer for the rest of the framework |
+| `system` | Hostname, kernel info, uptime, boot time, CPU info, memory, swap, load, kernel modules, hardware sensors | Lets applications ask basic host questions in a structured way |
+| `process` | Process enumeration and inspection via `/proc`, process control (signals, terminate, suspend, resume, nice) | Useful for debugging, monitoring, and process inventory |
+| `filesystem` | Disk usage, filesystem metadata, mount points, file operations (mkdir, rm, cp, mv, chmod, chown, write, read, truncate) | Useful for diagnostics and storage management |
+| `storage` | Block device enumeration and metadata from `/sys/block`, I/O statistics | Gives visibility into disks, block devices, and storage topology |
+| `network` | Interface enumeration and address reporting via `getifaddrs`/ioctl/netlink, connection listing | Helps inspect networking state without relying on shell wrappers |
+| `service` | systemd unit listing/status/control via D-Bus | Makes service state visible and manageable in a consistent format |
 | `security` | UID/GID/group and capability reporting | Useful for privilege and security context inspection |
 | `plugin` | Plugin discovery and dynamic loading from `.so` files | Enables extension without modifying the core build |
 | `cli` | Complete command-line application with human-readable and JSON output | Gives the project a user-friendly interface on top of the library |
@@ -48,6 +48,7 @@ nizaw
 2. Each fallible public API returns `nizaw::Result<T>` with structured error information.
 3. The CLI consumes these APIs and prints either human-readable text or JSON.
 4. Plugins are discovered from a directory and loaded dynamically as shared objects.
+5. Write operations include safety features: confirmation prompts, capability checks, and audit logging.
 
 ## Error handling
 
@@ -65,7 +66,7 @@ The `nizaw::core::Logger` is a minimal, dependency-free logging sink with levels
 
 ## Dependency policy
 
-The default posture is zero required third-party runtime dependencies. The project prefers the C++20 standard library and direct Linux APIs over external packages where possible. The only optional dependency is `libsystemd`/`sd-bus` for the `service` module; when unavailable, a stub implementation is built instead. The CLI uses a hand-rolled minimal argument parser to avoid adding a dependency for a shallow command tree. The project uses `dlopen`/`dlfcn.h` (part of glibc) for the plugin system, which is a base-system Linux API rather than a third-party dependency.
+The default posture is zero required third-party runtime dependencies. The project prefers the C++20 standard library and direct Linux APIs over external packages where possible. The only optional dependency is `libsystemd`/`sd-bus` for the `service` module; when unavailable, a stub implementation is built instead. The CLI uses a hand-rolled minimal argument parser to avoid adding a dependency for a shallow command tree. The project uses `dlopen`/`dlfcn.h` (part of glibc) for the plugin system, which is a base-system Linux API rather than a third-party dependency. See [docs/dependency-policy.md](docs/dependency-policy.md) for the full policy.
 
 ## Extension points
 
@@ -80,5 +81,8 @@ The default posture is zero required third-party runtime dependencies. The proje
 - `NIZAW_BUILD_CLI=ON` (default) - Build the nizaw CLI executable
 - `NIZAW_BUILD_TESTS=ON` (default) - Build unit/integration tests
 - `NIZAW_BUILD_EXAMPLES=OFF` - Build example programs
-- `NIZAW_ENABLE_SYSTEMD=ON` (default) - Enable systemd-backed service module
 - `NIZAW_BUILD_SHARED=OFF` - Build libnizaw as a shared library
+- `NIZAW_ENABLE_WARNINGS=ON` (default) - Enable strict compiler warnings
+- `NIZAW_ENABLE_ASAN=OFF` - Enable AddressSanitizer
+- `NIZAW_ENABLE_UBSAN=OFF` - Enable UndefinedBehaviorSanitizer
+- `NIZAW_ENABLE_SYSTEMD=ON` (default) - Enable systemd-backed service module

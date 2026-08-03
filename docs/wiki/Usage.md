@@ -417,7 +417,7 @@ void print_kernel_modules() {
 
 ### Process Management
 
-The `nizaw::process` module provides process enumeration and inspection.
+The `nizaw::process` module provides process enumeration, inspection, and control.
 
 #### Listing Processes
 
@@ -500,6 +500,108 @@ void inspect_process(pid_t pid) {
     std::cout << "  CPU time: " << proc.cpu_time_seconds << "s\n";
     std::cout << "  Command: " << proc.command << '\n';
     std::cout << "  Executable: " << proc.executable << '\n';
+}
+```
+
+#### Process Control (Write Operations)
+
+##### Sending Signals
+
+```cpp
+#include <iostream>
+#include <nizaw/process.hpp>
+
+void send_signal_example(pid_t pid, int signal) {
+    nizaw::core::WriteOptions options;
+    options.confirm_prompt = "Send signal " + std::to_string(signal) + 
+                            " to PID " + std::to_string(pid) + "?";
+    
+    auto result = nizaw::process::send_signal(pid, signal, options);
+    if (!result) {
+        std::cerr << "Failed: " << result.error().message() << '\n';
+        return;
+    }
+    
+    std::cout << "Signal sent successfully\n";
+}
+```
+
+##### Terminating Processes
+
+```cpp
+#include <iostream>
+#include <nizaw/process.hpp>
+
+void terminate_example(pid_t pid, bool force) {
+    nizaw::core::WriteOptions options;
+    options.force = force;  // SIGKILL if true, SIGTERM if false
+    options.confirm_prompt = force ? 
+        "Force kill PID " + std::to_string(pid) + "?" :
+        "Terminate PID " + std::to_string(pid) + "?";
+    
+    auto result = nizaw::process::terminate(pid, options);
+    if (!result) {
+        std::cerr << "Failed: " << result.error().message() << '\n';
+        return;
+    }
+    
+    std::cout << "Process terminated\n";
+}
+```
+
+##### Suspending and Resuming
+
+```cpp
+#include <iostream>
+#include <nizaw/process.hpp>
+
+void suspend_resume_example(pid_t pid) {
+    // Suspend (SIGSTOP)
+    nizaw::core::WriteOptions suspend_opts;
+    suspend_opts.confirm_prompt = "Suspend PID " + std::to_string(pid) + "?";
+    
+    auto suspend_result = nizaw::process::suspend(pid, suspend_opts);
+    if (!suspend_result) {
+        std::cerr << "Suspend failed: " << suspend_result.error().message() << '\n';
+        return;
+    }
+    
+    std::cout << "Process suspended\n";
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    
+    // Resume (SIGCONT)
+    nizaw::core::WriteOptions resume_opts;
+    resume_opts.confirm_prompt = "Resume PID " + std::to_string(pid) + "?";
+    
+    auto resume_result = nizaw::process::resume(pid, resume_opts);
+    if (!resume_result) {
+        std::cerr << "Resume failed: " << resume_result.error().message() << '\n';
+    }
+}
+```
+
+##### Changing Process Priority
+
+```cpp
+#include <iostream>
+#include <nizaw/process.hpp>
+
+void set_nice_example(pid_t pid, int nice_value) {
+    // nice_value range: -20 (highest priority) to 19 (lowest priority)
+    // Typically requires root/CAP_SYS_NICE for negative values
+    
+    nizaw::core::WriteOptions options;
+    options.confirm_prompt = "Set nice value of PID " + 
+                            std::to_string(pid) + " to " + 
+                            std::to_string(nice_value) + "?";
+    
+    auto result = nizaw::process::set_nice(pid, nice_value, options);
+    if (!result) {
+        std::cerr << "Failed: " << result.error().message() << '\n';
+        return;
+    }
+    
+    std::cout << "Nice value set\n";
 }
 ```
 
@@ -594,7 +696,7 @@ int main() {
 
 ### Filesystem Operations
 
-The `nizaw::filesystem` module provides disk usage and file metadata.
+The `nizaw::filesystem` module provides disk usage, file metadata, and write operations.
 
 #### Mount Points
 
@@ -719,6 +821,176 @@ int main() {
     analyze_file("/etc/passwd");
     analyze_file("/tmp/test.txt");
     return 0;
+}
+```
+
+### Filesystem Write Operations
+
+#### Creating Directories
+
+```cpp
+#include <iostream>
+#include <nizaw/filesystem.hpp>
+
+void create_directory_example() {
+    // Create a directory with default permissions (0755)
+    auto result = nizaw::filesystem::create_directory("/tmp/my_dir");
+    if (!result) {
+        std::cerr << "Failed to create directory: " 
+                  << result.error().message() << '\n';
+        return;
+    }
+    
+    // Create nested directories recursively
+    nizaw::core::WriteOptions options;
+    options.recursive = true;
+    options.confirm_prompt = "Create nested directories?";
+    
+    auto recursive_result = nizaw::filesystem::create_directory(
+        "/tmp/path/to/nested/dir", options, 0755
+    );
+    if (!recursive_result) {
+        std::cerr << "Failed: " << recursive_result.error().message() << '\n';
+    }
+}
+```
+
+#### Removing Files and Directories
+
+```cpp
+#include <iostream>
+#include <nizaw/filesystem.hpp>
+
+void remove_example(const std::string& path) {
+    nizaw::core::WriteOptions options;
+    options.recursive = true;  // Required for directories
+    options.confirm_prompt = "Delete " + path + "?";
+    
+    auto result = nizaw::filesystem::remove(path, options);
+    if (!result) {
+        std::cerr << "Failed to remove: " 
+                  << result.error().message() << '\n';
+        return;
+    }
+    
+    std::cout << "Removed: " << path << '\n';
+}
+```
+
+#### Copying and Moving
+
+```cpp
+#include <iostream>
+#include <nizaw/filesystem.hpp>
+
+void copy_and_move_examples() {
+    // Copy file
+    auto copy_result = nizaw::filesystem::copy(
+        "/path/to/source.txt", 
+        "/path/to/dest.txt"
+    );
+    if (!copy_result) {
+        std::cerr << "Copy failed: " << copy_result.error().message() << '\n';
+    }
+    
+    // Copy directory recursively
+    nizaw::core::WriteOptions copy_opts;
+    copy_opts.recursive = true;
+    auto copy_dir_result = nizaw::filesystem::copy(
+        "/path/to/source_dir", 
+        "/path/to/dest_dir", 
+        copy_opts
+    );
+    
+    // Rename/move
+    auto move_result = nizaw::filesystem::rename(
+        "/path/to/old_name", 
+        "/path/to/new_name"
+    );
+    if (!move_result) {
+        std::cerr << "Move failed: " << move_result.error().message() << '\n';
+    }
+}
+```
+
+#### Writing and Reading Files
+
+```cpp
+#include <iostream>
+#include <nizaw/filesystem.hpp>
+
+void file_io_example() {
+    // Write content to file
+    nizaw::core::WriteOptions write_opts;
+    write_opts.confirm_prompt = "Overwrite file?";
+    
+    auto write_result = nizaw::filesystem::write_file(
+        "/tmp/output.txt",
+        "Hello, Nizaw!\nThis is line 2.",
+        write_opts,
+        0644  // permissions
+    );
+    if (!write_result) {
+        std::cerr << "Write failed: " << write_result.error().message() << '\n';
+        return;
+    }
+    
+    // Read file content
+    auto read_result = nizaw::filesystem::read_file("/tmp/output.txt");
+    if (!read_result) {
+        std::cerr << "Read failed: " << read_result.error().message() << '\n';
+        return;
+    }
+    
+    std::cout << "File content:\n" << read_result.value() << '\n';
+}
+```
+
+#### Setting Permissions and Ownership
+
+```cpp
+#include <iostream>
+#include <nizaw/filesystem.hpp>
+
+void permissions_example(const std::string& path) {
+    // Change permissions (chmod)
+    auto chmod_result = nizaw::filesystem::set_permissions(
+        path, 
+        0750,  // rwxr-x---
+        nizaw::core::WriteOptions{}
+    );
+    if (!chmod_result) {
+        std::cerr << "chmod failed: " << chmod_result.error().message() << '\n';
+    }
+    
+    // Change owner (chown)
+    auto chown_result = nizaw::filesystem::set_owner(
+        path,
+        1000,  // UID
+        1000,  // GID
+        nizaw::core::WriteOptions{}
+    );
+    if (!chown_result) {
+        std::cerr << "chown failed: " << chown_result.error().message() << '\n';
+    }
+}
+```
+
+#### Creating Symbolic Links
+
+```cpp
+#include <iostream>
+#include <nizaw/filesystem.hpp>
+
+void symlink_example() {
+    auto result = nizaw::filesystem::create_symlink(
+        "/path/to/target",
+        "/path/to/link"
+    );
+    if (!result) {
+        std::cerr << "Failed to create symlink: " 
+                  << result.error().message() << '\n';
+    }
 }
 ```
 
@@ -848,6 +1120,67 @@ void inspect_interface(const std::string& iface_name) {
 
 ### Service Management
 
+The `nizaw::service` module provides systemd service management including control operations.
+
+#### Service Control (Write Operations)
+
+```cpp
+#include <iostream>
+#include <nizaw/service.hpp>
+
+void control_service_example(const std::string& unit_name) {
+    // Start a service
+    nizaw::core::WriteOptions start_opts;
+    start_opts.confirm_prompt = "Start " + unit_name + "?";
+    
+    auto start_result = nizaw::service::control(
+        unit_name,
+        nizaw::service::ServiceAction::Start,
+        start_opts
+    );
+    if (!start_result) {
+        std::cerr << "Start failed: " << start_result.error().message() << '\n';
+    }
+    
+    // Stop a service
+    nizaw::core::WriteOptions stop_opts;
+    stop_opts.confirm_prompt = "Stop " + unit_name + "?";
+    
+    auto stop_result = nizaw::service::control(
+        unit_name,
+        nizaw::service::ServiceAction::Stop,
+        stop_opts
+    );
+    
+    // Restart a service
+    nizaw::core::WriteOptions restart_opts;
+    restart_opts.confirm_prompt = "Restart " + unit_name + "?";
+    
+    auto restart_result = nizaw::service::control(
+        unit_name,
+        nizaw::service::ServiceAction::Restart,
+        restart_opts
+    );
+    
+    // Enable at boot
+    nizaw::core::WriteOptions enable_opts;
+    enable_opts.confirm_prompt = "Enable " + unit_name + " at boot?";
+    
+    auto enable_result = nizaw::service::enable(unit_name, enable_opts);
+    if (!enable_result) {
+        std::cerr << "Enable failed: " << enable_result.error().message() << '\n';
+    }
+    
+    // Disable at boot
+    nizaw::core::WriteOptions disable_opts;
+    disable_opts.confirm_prompt = "Disable " + unit_name + " at boot?";
+    
+    auto disable_result = nizaw::service::disable(unit_name, disable_opts);
+}
+```
+
+### Service Management
+
 The `nizaw::service` module provides systemd service information.
 
 ```cpp
@@ -906,6 +1239,45 @@ void inspect_service(const std::string& unit_name) {
     } else {
         std::cout << "  Main PID: none\n";
     }
+}
+```
+
+### Security Context
+
+The `nizaw::security` and `nizaw::core` modules provide identity and capability information.
+
+#### Checking Capabilities
+
+```cpp
+#include <iostream>
+#include <nizaw/core/write.hpp>
+#include <nizaw/filesystem.hpp>
+
+void check_capabilities_example() {
+    // Get current process capabilities
+    auto caps = nizaw::core::current_capabilities();
+    
+    // Check specific capabilities
+    if (caps.has_admin()) {
+        std::cout << "Process has CAP_SYS_ADMIN\n";
+    }
+    
+    if (caps.has_network_admin()) {
+        std::cout << "Process has CAP_NET_ADMIN\n";
+    }
+    
+    if (caps.is_root()) {
+        std::cout << "Process is running as root\n";
+    }
+    
+    // Use capabilities before write operations
+    nizaw::core::WriteOptions options;
+    if (!caps.has_admin()) {
+        std::cerr << "Warning: This operation requires CAP_SYS_ADMIN\n";
+        options.confirm_prompt = "Proceed without admin?";
+    }
+    
+    auto result = nizaw::filesystem::create_directory("/tmp/test", options);
 }
 ```
 

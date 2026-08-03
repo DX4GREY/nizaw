@@ -129,9 +129,9 @@ namespace env {
 }
 
 // --- version metadata ---
-inline constexpr unsigned kVersionMajor = 1;
-inline constexpr unsigned kVersionMinor = 1;
-inline constexpr unsigned kVersionPatch = 0;
+inline constexpr unsigned kVersionMajor = 2;
+inline constexpr unsigned kVersionMinor = 0;
+inline constexpr unsigned kVersionPatch = 1;
 
 struct Version { unsigned major; unsigned minor; unsigned patch; };
 std::string version_string();

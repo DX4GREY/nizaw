@@ -86,15 +86,15 @@ This project exists to make Linux system introspection easier to build and reuse
 | Logging | Implemented | `nizaw::core::Logger` with level filtering |
 | Platform detection | Implemented | `/etc/os-release` parsing, systemd detection |
 | Environment helpers | Implemented | `nizaw::core::env::get`, `get_or`, `exists` |
-| Version metadata | Implemented | `nizaw::core::version()` |
-| System info | Implemented | Hostname, kernel, uptime, CPU, architecture |
-| Process inspection | Implemented | Process list and detailed inspect support |
-| Filesystem info | Implemented | Usage and metadata reporting |
-| Storage information | Implemented | Device listing and metadata |
-| Network info | Implemented | Interface and address reporting |
-| Service info | Implemented | Service listing/status visibility |
+| Version metadata | Implemented | `nizaw::core::version()` — v2.0.1 |
+| System info | Implemented | Hostname, kernel, uptime, CPU, memory, swap, load, modules, hwmon |
+| Process inspection | Implemented | Process list, inspect, environment, signals, terminate, suspend, resume, nice |
+| Filesystem operations | Implemented | Usage, info, mounts, mkdir, rm, cp, mv, chmod, chown, write, read, truncate |
+| Storage information | Implemented | Device listing, inspect, I/O stats |
+| Network info | Implemented | Interface listing, inspect, connections |
+| Service management | Implemented | systemd list, inspect, start, stop, restart, reload, enable, disable |
 | Security context | Implemented | UIDs, GIDs, groups, capabilities |
-| Plugin loading | Implemented | Dynamic discovery and loading of `.so` files |
+| Plugin loading | Implemented | Dynamic discovery and loading of `.so` files with API versioning |
 
 ## Contributing
 

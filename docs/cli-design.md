@@ -7,28 +7,55 @@ Status: Stable command-line interface design
 ```
 nizaw
 ├── system
-│   └── info
+│   ├── info
+│   ├── cpu
+│   ├── memory
+│   ├── load
+│   ├── modules
+│   └── hwmon
 │
 ├── process
 │   ├── list
-│   └── inspect <PID>
+│   ├── inspect <PID>
+│   ├── environment <PID>
+│   ├── signal <PID> <SIGNAL>
+│   ├── terminate <PID> [--force]
+│   ├── suspend <PID>
+│   ├── resume <PID>
+│   └── nice <PID> <VALUE>
 │
 ├── fs
 │   ├── usage <PATH>
-│   └── info <PATH>
+│   ├── info <PATH>
+│   ├── mounts
+│   ├── mkdir <PATH> [--recursive] [--mode <OCTAL>]
+│   ├── rm <PATH> [--recursive]
+│   ├── cp <FROM> <TO> [--recursive]
+│   ├── mv <FROM> <TO>
+│   ├── write <PATH> <CONTENT>
+│   ├── chmod <PATH> <MODE>
+│   └── chown <PATH> <UID>:<GID>
 │
 ├── storage
 │   ├── list
-│   └── info <DEVICE>
+│   ├── info <DEVICE>
+│   └── iostat <DEVICE>
 │
 ├── network
 │   ├── interfaces
-│   └── info <IFACE>
+│   ├── info <IFACE>
+│   └── connections
 │
 ├── service
 │   ├── list
 │   ├── status <UNIT>
-│   └── inspect <UNIT>
+│   ├── inspect <UNIT>
+│   ├── start <UNIT>
+│   ├── stop <UNIT>
+│   ├── restart <UNIT>
+│   ├── reload <UNIT>
+│   ├── enable <UNIT>
+│   └── disable <UNIT>
 │
 ├── security
 │   ├── identity
@@ -47,10 +74,11 @@ exit code. No leaf command computes anything the library doesn't expose.
 ```
 --help / -h        show help and exit
 --version          show version and exit
---verbose / -v     increase log verbosity
---quiet            suppress non-essential output
+--verbose / -v     increase log verbosity (DEBUG level)
+--quiet            suppress non-essential output (WARN and above only)
 --json / -j        emit machine-readable JSON instead of human-readable text
 --no-color         disable ANSI color in human-readable output
+--yes / -y         skip interactive confirmation prompts (for write operations)
 ```
 
 Global flags are parsed before subcommand dispatch and apply uniformly; no
@@ -121,6 +149,10 @@ command tree is shallow and uniform (module → subcommand → optional single
 positional arg), which is exactly the case a minimal hand-rolled parser
 handles well without pulling in a dependency.
 
+Flags can appear before or after the subcommand; unknown flags are passed
+through to command handlers. Write operations accept optional flags like
+`--force`, `--recursive`, and `--mode` depending on the operation.
+
 ## 6. Exit codes
 
 The CLI uses the following exit codes:
@@ -135,10 +167,20 @@ Mapping from `nizaw::ErrorCode` (library) to exit codes is handled in the
 
 ## 7. Privileged operations
 
-Selected modules (`storage`, `service`, etc.) are read-only. No CLI
-command performs a destructive or privilege-escalating action in the current
-release. If/when `service start|stop|enable|disable` are added
-(explicitly deferred — see `architecture.md` §4 Non-goals), they will
-require an interactive confirmation prompt by default and a `--yes` flag to
-skip it non-interactively, plus a capability/permission pre-check that fails
-closed rather than attempting the syscall and letting the kernel reject it.
+Write operations in the `process`, `filesystem`, and `service` modules
+perform privileged actions. These commands require appropriate permissions
+(Linux capabilities, root, or sudo) and include safety features:
+
+- **Confirmation prompts**: Destructive operations prompt for confirmation by default
+- **Capability checks**: Operations check for required capabilities (e.g., `CAP_SYS_ADMIN` for filesystem changes)
+- **`--yes` flag**: Skip confirmation prompts for automation
+- **`--force` flag**: Override safety checks when necessary (use with caution)
+
+Examples:
+- `nizaw process terminate <PID>` — prompts for confirmation
+- `nizaw process terminate <PID> --force` — sends SIGKILL immediately
+- `nizaw fs rm /path --recursive` — prompts before recursive deletion
+- `nizaw service start ssh --yes` — starts service without prompting
+
+The CLI exits with code `1` on permission denied or capability errors,
+and code `2` on invalid arguments.
