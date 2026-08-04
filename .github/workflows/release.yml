@@ -28,12 +28,6 @@ jobs:
             cxx: g++
             cmake_extra: ''
             run_tests: true
-          - arch: aarch64
-            name: linux-aarch64
-            cc: aarch64-linux-gnu-gcc
-            cxx: aarch64-linux-gnu-g++
-            cmake_extra: '-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64'
-            run_tests: false
 
     env:
       BUILD_TYPE: Release
@@ -50,9 +44,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake ninja-build pkg-config libsystemd-dev libcap-dev
-          if [ "${{ matrix.arch }}" = "aarch64" ]; then
-            sudo apt-get install -y g++-aarch64-linux-gnu gcc-aarch64-linux-gnu
-          fi
 
       - name: Configure project
         run: |
@@ -143,7 +134,7 @@ jobs:
             echo "## Release ${RELEASE_TAG}"
             echo ""
             echo "### Build highlights"
-            echo "- Multi-architecture Linux binaries for x86_64 and aarch64"
+            echo "- Linux x86_64 release binary"
             echo "- Release archive includes headers, libraries, and CLI binary"
             echo ""
             echo "### Recent commits"
