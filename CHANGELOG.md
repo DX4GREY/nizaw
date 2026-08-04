@@ -1,6 +1,50 @@
 # Changelog
 
-## 2.1.0 (current)
+## 3.0.0 (current)
+
+### Added
+- **Agent Module (`nizaw::agent`)**:
+  - `AgentConfig` struct with id, server_url, TLS cert paths, heartbeat interval, jitter, max parallel tasks, temp dir, and security permissions
+  - `TelemetryData` struct with hostname, kernel, arch, uptime, loadavg, IP address, agent version
+  - `TaskResult` struct with task_id, success, output, exit_code, error_message
+  - Agent lifecycle: `start_daemon()`, `stop_daemon()`, `is_running()`, `get_pid()`
+  - Configuration: `load_config()` (TOML parsing), `validate_config()`
+  - Telemetry: `collect_telemetry()`
+  - `TaskExecutor` class with exec_cmd, exec_script, fetch_file, push_file, sys_probe, sleep, upgrade task types
+  - `TaskQueue` class with SQLite-backed persistence, enqueue/dequeue, retry support
+- **Remote Module (`nizaw::remote`)**:
+  - `ServerConfig` struct with URL, TLS cert paths, server fingerprint, timeouts
+  - `TaskType` enum: ExecCmd, ExecScript, FetchFile, PushFile, SysProbe, Sleep, Upgrade
+  - `RemoteTask` and `TaskResponse` structs
+  - `Transport` class with mTLS connection, heartbeat, send_result, disconnect
+  - `https_post()` and `https_get()` HTTP/2 client functions
+  - Certificate utilities: `load_cert_fingerprint()`, `verify_server_fingerprint()`
+- **CLI Agent Commands**:
+  - `agent start [--config <PATH>]` - start agent daemon
+  - `agent stop` - stop agent daemon
+  - `agent status` - check agent status (with `--json` support)
+  - `agent config [--validate] [--config <PATH>]` - display/validate agent config
+- **CMake**: `NIZAW_BUILD_AGENT` option (default ON) to build agent/remote modules
+- **Tests**: `tests/agent/test_agent.cpp` with AgentConfig defaults, validation, telemetry, executor permissions, and task queue tests
+- **Docker**: `Dockerfile.agent` and `docker-compose.yml` for multi-agent simulation
+- **Documentation**: `docs/agent-architecture.md` for agent architecture and configuration
+
+### Changed
+- `CMakeLists.txt` now links `nizaw::agent` and `nizaw::remote` to CLI and test targets
+- `src/cli/cli.cpp` includes agent commands when `NIZAW_BUILD_AGENT` is defined
+- `tests/support/main.cpp` includes `run_agent_tests()`
+- `include/nizaw/agent/agent.hpp` declares `collect_telemetry()`
+- `src/remote/transport.cpp` rewritten to fix structural issues with `Transport::Impl` and SSL context management
+- CLI argument parsing for `agent config` and `agent start` now handles flags in any order
+
+### Fixed
+- `collect_telemetry()` was defined in `agent.cpp` but not declared in `agent.hpp`
+- `src/remote/transport.cpp` had conflicting `Transport::Impl` definitions, incompatible SSL context types, and invalid `Result<std::string>` returns
+- `tests/agent/test_agent.cpp` had incorrect `dequeue()` result access and missing `TaskType` include
+- `CMakeLists.txt` was missing `nizaw::agent`/`nizaw::remote` link for test target and `NIZAW_BUILD_AGENT` compile definition for CLI
+- `find_library(ZLIB_LIBRARY zlib)` failed to find zlib; replaced with `find_package(ZLIB REQUIRED)` + `ZLIB::ZLIB`
+
+## 2.1.0 (released)
 
 ### Added
 - Network interface statistics: `rx_bytes`, `tx_bytes`, `rx_packets`, `tx_packets`, `rx_errors`, `tx_errors`, `rx_dropped`, `tx_dropped` in `InterfaceInfo`
@@ -13,7 +57,7 @@
 ### Changed
 - Network `list()` and `inspect()` now populate statistics fields from `/sys/class/net/*/statistics`
 
-## 2.0.1 (current)
+## 2.0.1 (released)
 
 ### Added
 - Network connections listing: `network::connections()` to enumerate TCP/UDP connections

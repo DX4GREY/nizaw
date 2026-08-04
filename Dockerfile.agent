@@ -1,0 +1,49 @@
+# Multi-stage build for nizaw agent
+FROM ubuntu:22.04 AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    libssl-dev \
+    libsqlite3-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy source code
+WORKDIR /build
+COPY . .
+
+# Build nizaw with agent support
+RUN cmake -B build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DNIZAW_BUILD_AGENT=ON \
+    -DNIZAW_BUILD_TESTS=OFF \
+    -DNIZAW_BUILD_CLI=ON \
+    -DNIZAW_BUILD_EXAMPLES=OFF && \
+    cmake --build build -j$(nproc)
+
+# Final stage
+FROM ubuntu:22.04
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libssl3 \
+    libsqlite3-0 \
+    zlib1g \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy binary
+COPY --from=builder /build/build/nizaw /usr/local/bin/nizaw
+
+# Create directories
+RUN mkdir -p /etc/nizaw /var/cache/nizaw /var/log/nizaw
+
+# Copy agent configuration
+COPY --from=builder /build/agent.toml.example /etc/nizaw/agent.toml.example
+
+# Set entrypoint
+ENTRYPOINT ["/usr/local/bin/nizaw"]
+CMD ["agent", "start", "--config", "/etc/nizaw/agent.toml"]

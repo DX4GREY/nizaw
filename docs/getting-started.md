@@ -7,6 +7,9 @@
 - CMake 3.20 or newer
 - pkg-config (for optional systemd detection)
 - Ninja (recommended)
+- OpenSSL (for agent/remote module, required when `NIZAW_BUILD_AGENT=ON`)
+- zlib (for agent/remote module, required when `NIZAW_BUILD_AGENT=ON`)
+- SQLite3 (for agent module, required when `NIZAW_BUILD_AGENT=ON`)
 
 ## Quick Build
 
@@ -23,6 +26,10 @@ ctest --test-dir build --output-on-failure
 # Try the CLI
 ./build/nizaw --help
 ./build/nizaw system info
+
+# Agent commands (requires NIZAW_BUILD_AGENT=ON)
+./build/nizaw agent status
+./build/nizaw agent config --validate --config agent.toml
 ```
 
 ## Library Usage

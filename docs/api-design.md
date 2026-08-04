@@ -540,6 +540,128 @@ Result<std::vector<PluginInfo>> discover(std::string_view directory);
 } // namespace nizaw::plugin
 ```
 
+### `nizaw::agent`
+
+```cpp
+namespace nizaw::agent {
+
+struct AgentConfig {
+    std::string id;
+    std::string server_url;
+    std::string ca_cert;
+    std::string client_cert;
+    std::string client_key;
+    std::chrono::seconds heartbeat_interval{60};
+    int jitter_percent = 30;
+    int max_parallel_tasks = 4;
+    std::string temp_dir = "/var/cache/nizaw/";
+    bool allow_exec = true;
+    bool allow_fetch = true;
+    bool allow_push = true;
+    std::vector<std::string> restricted_paths;
+};
+
+struct TelemetryData {
+    std::string hostname;
+    std::string kernel;
+    std::string arch;
+    std::string uptime;
+    std::string loadavg;
+    std::string ip_address;
+    std::string agent_version;
+};
+
+struct TaskResult {
+    std::string task_id;
+    bool success = false;
+    std::string output;
+    int exit_code = -1;
+    std::string error_message;
+};
+
+// Agent lifecycle
+Result<void> start_daemon(const AgentConfig& config);
+Result<void> stop_daemon();
+Result<bool> is_running();
+Result<std::string> get_pid();
+
+// Configuration
+Result<AgentConfig> load_config(std::string_view path);
+Result<void> validate_config(const AgentConfig& config);
+
+// Telemetry
+TelemetryData collect_telemetry();
+
+// Foreground mode for debugging
+Result<int> run_foreground(const AgentConfig& config);
+
+} // namespace nizaw::agent
+```
+
+### `nizaw::remote`
+
+```cpp
+namespace nizaw::remote {
+
+struct ServerConfig {
+    std::string url;
+    std::string ca_cert_path;
+    std::string client_cert_path;
+    std::string client_key_path;
+    std::string server_fingerprint;
+    std::chrono::seconds connect_timeout{10};
+    std::chrono::seconds request_timeout{30};
+};
+
+enum class TaskType {
+    ExecCmd,
+    ExecScript,
+    FetchFile,
+    PushFile,
+    SysProbe,
+    Sleep,
+    Upgrade
+};
+
+struct RemoteTask {
+    std::string task_id;
+    TaskType type;
+    std::string payload;  // JSON or base64 depending on type
+    std::chrono::seconds timeout{300};
+};
+
+struct TaskResponse {
+    bool has_task = false;
+    RemoteTask task;
+};
+
+class Transport {
+public:
+    explicit Transport(ServerConfig config);
+    ~Transport();
+
+    Result<void> connect();
+    Result<TaskResponse> heartbeat(const nizaw::agent::TelemetryData& telemetry);
+    Result<void> send_result(const nizaw::agent::TaskResult& result);
+    bool is_connected() const noexcept;
+    void disconnect() noexcept;
+};
+
+// HTTP/2 client with mTLS
+Result<std::string> https_post(const ServerConfig& config,
+                               std::string_view endpoint,
+                               std::string_view json_payload);
+Result<std::string> https_get(const ServerConfig& config,
+                              std::string_view endpoint);
+
+// Certificate utilities
+Result<std::string> load_cert_fingerprint(std::string_view cert_path);
+Result<bool> verify_server_fingerprint(std::string_view cert_path,
+                                       std::string_view expected_fingerprint);
+
+} // namespace nizaw::remote
+```
+
 ## 3. API design principles (recap, enforced across all modules)
 
 - Public headers never leak `/proc`/`/sys` parsing details. There is no

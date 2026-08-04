@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(nizaw
-    VERSION 2.1.0
+    VERSION 3.0.0
     DESCRIPTION "Modern Linux System & CLI Framework written in C++20"
     LANGUAGES CXX
 )
@@ -22,6 +22,7 @@ endif()
 option(NIZAW_BUILD_TESTS "Build unit/integration tests" ON)
 option(NIZAW_BUILD_EXAMPLES "Build example programs" OFF)
 option(NIZAW_BUILD_CLI "Build the nizaw CLI application" ON)
+option(NIZAW_BUILD_AGENT "Build the nizaw agent (remote orchestration)" ON)
 option(NIZAW_BUILD_SHARED "Build libnizaw as a shared library" OFF)
 option(NIZAW_ENABLE_WARNINGS "Enable strict compiler warnings" ON)
 option(NIZAW_ENABLE_ASAN "Enable AddressSanitizer" OFF)
@@ -192,6 +193,55 @@ target_include_directories(nizaw_plugin PUBLIC
 target_compile_features(nizaw_plugin PUBLIC cxx_std_20)
 target_link_libraries(nizaw_plugin PUBLIC nizaw::core nizaw_project_options)
 
+# --- nizaw::remote ----------------------------------------------------------
+if(NIZAW_BUILD_AGENT)
+    add_library(nizaw_remote
+        src/remote/transport.cpp
+    )
+    add_library(nizaw::remote ALIAS nizaw_remote)
+
+    target_include_directories(nizaw_remote PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    target_compile_features(nizaw_remote PUBLIC cxx_std_20)
+    target_link_libraries(nizaw_remote PUBLIC nizaw::core nizaw_project_options)
+
+    find_package(OpenSSL REQUIRED)
+    target_link_libraries(nizaw_remote PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+
+    if(UNIX AND NOT APPLE)
+        find_package(ZLIB REQUIRED)
+        target_link_libraries(nizaw_remote PUBLIC ZLIB::ZLIB)
+        find_library(SQLITE3_LIBRARY sqlite3)
+        if(SQLITE3_LIBRARY)
+            target_link_libraries(nizaw_remote PUBLIC ${SQLITE3_LIBRARY})
+        endif()
+    endif()
+
+    # --- nizaw::agent -------------------------------------------------------
+    add_library(nizaw_agent
+        src/agent/agent.cpp
+        src/agent/queue.cpp
+        src/agent/executor.cpp
+    )
+    add_library(nizaw::agent ALIAS nizaw_agent)
+
+    target_include_directories(nizaw_agent PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    target_compile_features(nizaw_agent PUBLIC cxx_std_20)
+    target_link_libraries(nizaw_agent PUBLIC nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw::remote nizaw_project_options)
+
+    if(UNIX AND NOT APPLE)
+        target_link_libraries(nizaw_agent PUBLIC ZLIB::ZLIB)
+        if(SQLITE3_LIBRARY)
+            target_link_libraries(nizaw_agent PUBLIC ${SQLITE3_LIBRARY})
+        endif()
+    endif()
+endif()
+
 # --- CLI ---------------------------------------------------------------------
 if(NIZAW_BUILD_CLI)
     add_executable(nizaw
@@ -204,6 +254,11 @@ if(NIZAW_BUILD_CLI)
     )
     target_compile_features(nizaw PUBLIC cxx_std_20)
     target_link_libraries(nizaw PUBLIC nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw::storage nizaw::network nizaw::service nizaw::security nizaw::plugin nizaw_project_options)
+
+    if(NIZAW_BUILD_AGENT)
+        target_link_libraries(nizaw PUBLIC nizaw::agent)
+        target_compile_definitions(nizaw PRIVATE NIZAW_BUILD_AGENT=1)
+    endif()
 endif()
 
 # --- Examples ----------------------------------------------------------------
@@ -244,6 +299,12 @@ if(NIZAW_BUILD_TESTS)
         tests/security/test_security.cpp
         tests/plugin/test_plugin.cpp
     )
+    
+    if(NIZAW_BUILD_AGENT)
+        target_sources(nizaw_core_tests PRIVATE tests/agent/test_agent.cpp)
+        target_compile_definitions(nizaw_core_tests PRIVATE NIZAW_BUILD_AGENT=1)
+        target_link_libraries(nizaw_core_tests PRIVATE nizaw::agent nizaw::remote)
+    endif()
     add_dependencies(nizaw_core_tests nizaw_test_plugin_fixture)
     target_compile_definitions(nizaw_core_tests PRIVATE PLUGIN_FIXTURE_DIR="${CMAKE_CURRENT_BINARY_DIR}/tests/plugin")
     target_link_libraries(nizaw_core_tests PRIVATE nizaw::core nizaw::system nizaw::process nizaw::filesystem nizaw::storage nizaw::network nizaw::service nizaw::security nizaw::plugin nizaw_project_options)
@@ -267,6 +328,10 @@ set(NIZAW_INSTALL_TARGETS
     nizaw_security
     nizaw_plugin
 )
+
+if(NIZAW_BUILD_AGENT)
+    list(APPEND NIZAW_INSTALL_TARGETS nizaw_remote nizaw_agent)
+endif()
 
 if(NIZAW_BUILD_CLI)
     list(APPEND NIZAW_INSTALL_TARGETS nizaw)

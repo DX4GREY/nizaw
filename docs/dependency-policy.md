@@ -42,12 +42,17 @@ shell-injection / TOCTOU surface the project's security requirements forbid.
 | Dependency | Module    | Required or optional | Reasoning |
 |------------|-----------|----------------------|-----------|
 | `libsystemd` (`sd-bus`) | `service` | Optional, feature-gated by `NIZAW_ENABLE_SYSTEMD` (default ON on systemd distros, buildable OFF) | systemd status/listing requires D-Bus. Hand-rolling a D-Bus client is a large, security-sensitive undertaking (message framing, authentication) disproportionate to what `sd-bus` already solves correctly and stably as part of the base systemd install on all target distros except where systemd itself is absent. |
+| OpenSSL (`libssl`, `libcrypto`) | `remote` | Required when `NIZAW_BUILD_AGENT=ON` (default ON) | mTLS transport for agent-orchestrator communication requires TLS 1.3, certificate loading, and SHA-256 fingerprinting. OpenSSL is the de-facto standard for TLS in C/C++ and is available on all target distros. |
+| zlib | `remote`, `agent` | Required when `NIZAW_BUILD_AGENT=ON` (default ON) | Used for file compression in `fetch_file`/`push_file` task types and SHA-256 computation in the executor. zlib is a base-system library on all target distros. |
+| SQLite3 (`libsqlite3`) | `agent` | Required when `NIZAW_BUILD_AGENT=ON` (default ON) | SQLite-backed task queue persistence with WAL mode for concurrent access. SQLite is a base-system library on all target distros. |
 | Test framework (candidate: Catch2, header-only) | `tests` only, never shipped in `libnizaw`/`nizaw` binaries | Optional, dev-only | Needed for unit tests; does not affect the shipped library/CLI dependency footprint at all since it's test-only. Selection is deferred until the test infrastructure is finalized. |
 
 No dependency is currently identified for: `core`, `system`, `process`,
 `filesystem`, `storage`, `network`, `security`, `cli`, `plugin`. These are
 expected to remain dependency-free, built entirely on the C++20 standard
-library and direct Linux kernel interfaces.
+library and direct Linux kernel interfaces. The `remote` and `agent` modules
+are feature-gated by `NIZAW_BUILD_AGENT` (default ON) and can be compiled out
+for a minimal dependency-free build.
 
 ## 5. CLI argument parsing
 

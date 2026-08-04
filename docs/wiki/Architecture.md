@@ -22,9 +22,11 @@ nizaw
 ├── service
 ├── security
 ├── plugin
+├── remote
+├── agent
 └── cli
 
-(10 modules total)
+(12 modules total)
 ```
 
 ## Module overview
@@ -40,6 +42,8 @@ nizaw
 | `service` | systemd unit listing/status/control via D-Bus | Makes service state visible and manageable in a consistent format |
 | `security` | UID/GID/group and capability reporting | Useful for privilege and security context inspection |
 | `plugin` | Plugin discovery and dynamic loading from `.so` files | Enables extension without modifying the core build |
+| `remote` | mTLS transport layer for agent-orchestrator communication (OpenSSL) | Provides secure communication for the agent module |
+| `agent` | Distributed agentic orchestration: lifecycle, config, telemetry, task execution, SQLite-backed task queue | Enables remote task orchestration and telemetry collection |
 | `cli` | Complete command-line application with human-readable and JSON output | Gives the project a user-friendly interface on top of the library |
 
 ## How it works
@@ -49,6 +53,8 @@ nizaw
 3. The CLI consumes these APIs and prints either human-readable text or JSON.
 4. Plugins are discovered from a directory and loaded dynamically as shared objects.
 5. Write operations include safety features: confirmation prompts, capability checks, and audit logging.
+6. The agent module collects telemetry, executes remote tasks, and maintains a SQLite-backed task queue.
+7. The remote module provides mTLS transport for secure agent-orchestrator communication.
 
 ## Error handling
 
@@ -86,3 +92,4 @@ The default posture is zero required third-party runtime dependencies. The proje
 - `NIZAW_ENABLE_ASAN=OFF` - Enable AddressSanitizer
 - `NIZAW_ENABLE_UBSAN=OFF` - Enable UndefinedBehaviorSanitizer
 - `NIZAW_ENABLE_SYSTEMD=ON` (default) - Enable systemd-backed service module
+- `NIZAW_BUILD_AGENT=ON` (default) - Build the nizaw agent (remote orchestration)

@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # Mock Orchestrator Server
+  orchestrator:
+    image: nginx:alpine
+    ports:
+      - "8443:443"
+    volumes:
+      - ./tests/mock/orchestrator.conf:/etc/nginx/nginx.conf:ro
+      - ./tests/mock/certs:/etc/nginx/certs:ro
+      - ./tests/mock/html:/usr/share/nginx/html:ro
+    networks:
+      - nizaw-net
+    healthcheck:
+      test: ["CMD", "curl", "-k", "https://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Agent 1
+  agent1:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    environment:
+      - NIZAW_CONFIG=/etc/nizaw/agent.toml
+    volumes:
+      - ./tests/mock/agent1.toml:/etc/nizaw/agent.toml:ro
+      - ./tests/mock/certs:/etc/nizaw/certs:ro
+      - agent1-data:/var/cache/nizaw
+    networks:
+      - nizaw-net
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Agent 2
+  agent2:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    environment:
+      - NIZAW_CONFIG=/etc/nizaw/agent.toml
+    volumes:
+      - ./tests/mock/agent2.toml:/etc/nizaw/agent.toml:ro
+      - ./tests/mock/certs:/etc/nizaw/certs:ro
+      - agent2-data:/var/cache/nizaw
+    networks:
+      - nizaw-net
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Monitoring - View logs
+  logviewer:
+    image: alpine:latest
+    command: tail -f /var/log/nginx/access.log
+    volumes:
+      - orchestrator-logs:/var/log/nginx
+    networks:
+      - nizaw-net
+    depends_on:
+      - orchestrator
+
+volumes:
+  agent1-data:
+  agent2-data:
+  orchestrator-logs:
+
+networks:
+  nizaw-net:
+    driver: bridge

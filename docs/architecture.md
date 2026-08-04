@@ -1,7 +1,7 @@
 # Nizaw — Architecture
 
 Status: Stable architecture and implementation
-Version: 2.1.0
+Version: 3.0.0
 
 ## 1. Purpose
 
@@ -126,6 +126,8 @@ module APIs. The current modules are:
 - **service** - systemd unit listing and status via D-Bus
 - **security** - UID/GID/group and capability reporting
 - **plugin** - Plugin discovery and dynamic loading from .so files
+- **remote** - mTLS transport layer for agent-orchestrator communication (OpenSSL)
+- **agent** - Distributed agentic orchestration: lifecycle, config, telemetry, task execution, SQLite-backed task queue
 - **cli** - Complete command-line application with human-readable and JSON output
 
 ## 6. Module boundaries
@@ -141,6 +143,8 @@ module APIs. The current modules are:
 | `service`     | systemd unit listing/status via D-Bus (with a backend-abstraction seam) | `core`                |
 | `security`    | UID/GID/groups/capabilities/privilege introspection                    | `core`                |
 | `plugin`      | Dynamic command loading (`.so`), API versioning, plugin registry       | `core`                |
+| `remote`      | mTLS transport, HTTPS/2 client, certificate fingerprinting             | `core`, OpenSSL, zlib |
+| `agent`       | Agent lifecycle, config parsing, telemetry, task executor, task queue  | `core`, `system`, `process`, `filesystem`, `remote`, zlib, sqlite3 |
 | `cli`         | Argument parsing, command tree, formatting (human + JSON), exit codes  | all of the above (as needed per command) |
 
 Each module is a **separate CMake target** so consumers can link only what

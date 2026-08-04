@@ -10,6 +10,10 @@
 #include "nizaw/storage.hpp"
 #include "nizaw/system.hpp"
 
+#ifdef NIZAW_BUILD_AGENT
+#include "nizaw/agent.hpp"
+#endif
+
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -142,6 +146,13 @@ void print_help() {
               << "  service disable <UNIT>\n"
               << "  security identity\n"
               << "  security capabilities\n"
+              << "  plugins list [DIRECTORY]\n"
+#ifdef NIZAW_BUILD_AGENT
+              << "  agent start [--config <PATH>]\n"
+              << "  agent stop\n"
+              << "  agent status\n"
+              << "  agent config [--validate]\n"
+#endif
               << "  plugins list [DIRECTORY]\n";
 }
 
@@ -1488,6 +1499,157 @@ int run_command(const Options& options) {
             return run_plugins_list(options, options.args[2]);
         }
     }
+#ifdef NIZAW_BUILD_AGENT
+    else if (command == "agent") {
+        if (options.args.size() >= 2 && options.args[1] == "start") {
+            std::string config_path = "agent.toml";
+            for (size_t i = 2; i < options.args.size(); ++i) {
+                if (options.args[i] == "--config" && i + 1 < options.args.size()) {
+                    config_path = options.args[i + 1];
+                    ++i;
+                }
+            }
+            
+            const auto config_result = agent::load_config(config_path);
+            if (!config_result) {
+                print_error(config_result.error(), options.json);
+                return 1;
+            }
+            
+            const auto validate_result = agent::validate_config(config_result.value());
+            if (!validate_result) {
+                print_error(validate_result.error(), options.json);
+                return 1;
+            }
+            
+            const auto start_result = agent::start_daemon(config_result.value());
+            if (!start_result) {
+                print_error(start_result.error(), options.json);
+                return 1;
+            }
+            
+            if (!options.json) {
+                std::cout << "Agent daemon started\n";
+            }
+            return 0;
+        }
+        if (options.args.size() == 2 && options.args[1] == "stop") {
+            const auto result = agent::stop_daemon();
+            if (!result) {
+                print_error(result.error(), options.json);
+                return 1;
+            }
+            if (!options.json) {
+                std::cout << "Agent daemon stopped\n";
+            }
+            return 0;
+        }
+        if (options.args.size() == 2 && options.args[1] == "status") {
+            const auto running_result = agent::is_running();
+            if (!running_result) {
+                print_error(running_result.error(), options.json);
+                return 1;
+            }
+            
+            if (options.json) {
+                std::cout << "{";
+                if (running_result.value()) {
+                    const auto pid_result = agent::get_pid();
+                    std::cout << "\"running\":true,";
+                    if (pid_result) {
+                        std::cout << "\"pid\":" << pid_result.value();
+                    } else {
+                        std::cout << "\"pid\":null";
+                    }
+                } else {
+                    std::cout << "\"running\":false,\"pid\":null";
+                }
+                std::cout << "}\n";
+            } else {
+                if (running_result.value()) {
+                    const auto pid_result = agent::get_pid();
+                    std::cout << "Agent is running";
+                    if (pid_result) {
+                        std::cout << " (PID: " << pid_result.value() << ")";
+                    }
+                    std::cout << "\n";
+                } else {
+                    std::cout << "Agent is not running\n";
+                }
+            }
+            return 0;
+        }
+        if (options.args.size() >= 2 && options.args[1] == "config") {
+            bool validate_only = false;
+            std::string config_path = "agent.toml";
+            
+            for (size_t i = 2; i < options.args.size(); ++i) {
+                if (options.args[i] == "--validate") {
+                    validate_only = true;
+                } else if (options.args[i] == "--config" && i + 1 < options.args.size()) {
+                    config_path = options.args[i + 1];
+                    ++i;
+                }
+            }
+            
+            const auto config_result = agent::load_config(config_path);
+            if (!config_result) {
+                print_error(config_result.error(), options.json);
+                return 1;
+            }
+            
+            const auto validate_result = agent::validate_config(config_result.value());
+            if (!validate_result) {
+                print_error(validate_result.error(), options.json);
+                return 1;
+            }
+            
+            if (validate_only) {
+                if (!options.json) {
+                    std::cout << "Configuration is valid\n";
+                }
+                return 0;
+            }
+            
+            if (options.json) {
+                std::cout << "{"
+                          << "\"id\":" << json_string(config_result.value().id) << ","
+                          << "\"server_url\":" << json_string(config_result.value().server_url) << ","
+                          << "\"ca_cert\":" << json_string(config_result.value().ca_cert) << ","
+                          << "\"client_cert\":" << json_string(config_result.value().client_cert) << ","
+                          << "\"client_key\":" << json_string(config_result.value().client_key) << ","
+                          << "\"heartbeat_interval_sec\":" << config_result.value().heartbeat_interval.count() << ","
+                          << "\"jitter_percent\":" << config_result.value().jitter_percent << ","
+                          << "\"max_parallel_tasks\":" << config_result.value().max_parallel_tasks << ","
+                          << "\"temp_dir\":" << json_string(config_result.value().temp_dir) << ","
+                          << "\"allow_exec\":" << (config_result.value().allow_exec ? "true" : "false") << ","
+                          << "\"allow_fetch\":" << (config_result.value().allow_fetch ? "true" : "false") << ","
+                          << "\"allow_push\":" << (config_result.value().allow_push ? "true" : "false") << ","
+                          << "\"restricted_paths\":" << join_json_array(config_result.value().restricted_paths)
+                          << "}\n";
+            } else {
+                std::cout << "Agent Configuration:\n";
+                std::cout << "  ID: " << config_result.value().id << "\n";
+                std::cout << "  Server URL: " << config_result.value().server_url << "\n";
+                std::cout << "  CA Cert: " << config_result.value().ca_cert << "\n";
+                std::cout << "  Client Cert: " << config_result.value().client_cert << "\n";
+                std::cout << "  Client Key: " << config_result.value().client_key << "\n";
+                std::cout << "  Heartbeat Interval: " << config_result.value().heartbeat_interval.count() << "s\n";
+                std::cout << "  Jitter Percent: " << config_result.value().jitter_percent << "%\n";
+                std::cout << "  Max Parallel Tasks: " << config_result.value().max_parallel_tasks << "\n";
+                std::cout << "  Temp Dir: " << config_result.value().temp_dir << "\n";
+                std::cout << "  Allow Exec: " << (config_result.value().allow_exec ? "yes" : "no") << "\n";
+                std::cout << "  Allow Fetch: " << (config_result.value().allow_fetch ? "yes" : "no") << "\n";
+                std::cout << "  Allow Push: " << (config_result.value().allow_push ? "yes" : "no") << "\n";
+                std::cout << "  Restricted Paths:\n";
+                for (const auto& path : config_result.value().restricted_paths) {
+                    std::cout << "    - " << path << "\n";
+                }
+            }
+            return 0;
+        }
+    }
+#endif
 
     std::cerr << "Unknown or incomplete command." << '\n';
     print_help();

@@ -20,6 +20,7 @@ This guide provides comprehensive examples for using Nizaw both from the command
   - [Service Management](#service-management)
   - [Security Context](#security-context)
   - [Plugin Discovery](#plugin-discovery)
+  - [Agent Management](#agent-management)
   - [Error Handling Patterns](#error-handling-patterns)
   - [Working with Multiple Modules](#working-with-multiple-modules)
   - [Best Practices](#best-practices)
@@ -190,6 +191,27 @@ The CLI entry point is `nizaw` and follows a simple command tree.
 # List plugins in custom directory
 ./build/nizaw plugins list /path/to/plugins
 ./build/nizaw plugins list --json ./custom/plugins
+```
+
+#### Agent
+
+```bash
+# Check agent daemon status
+./build/nizaw agent status
+./build/nizaw agent status --json
+
+# Validate agent configuration
+./build/nizaw agent config --validate --config agent.toml
+
+# Display agent configuration
+./build/nizaw agent config --config agent.toml
+./build/nizaw agent config --json --config agent.toml
+
+# Start agent daemon
+./build/nizaw agent start --config agent.toml
+
+# Stop agent daemon
+./build/nizaw agent stop
 ```
 
 ### JSON Output
@@ -1398,6 +1420,127 @@ void use_plugin_registry(const std::string& directory) {
     }
     
     // Registry will automatically unload plugins when it goes out of scope
+}
+```
+
+### Agent Management
+
+The `nizaw::agent` module provides distributed agentic orchestration capabilities.
+
+#### Loading and Validating Configuration
+
+```cpp
+#include <iostream>
+#include <nizaw/agent.hpp>
+
+void load_agent_config(const std::string& path) {
+    // Load configuration from TOML file
+    auto config_result = nizaw::agent::load_config(path);
+    if (!config_result) {
+        std::cerr << "Failed to load config: " 
+                  << config_result.error().message() << '\n';
+        return;
+    }
+    
+    const auto& config = config_result.value();
+    
+    // Validate configuration
+    auto validate_result = nizaw::agent::validate_config(config);
+    if (!validate_result) {
+        std::cerr << "Invalid config: " 
+                  << validate_result.error().message() << '\n';
+        return;
+    }
+    
+    std::cout << "Agent configuration is valid\n";
+    std::cout << "  Server URL: " << config.server_url << '\n';
+    std::cout << "  Heartbeat interval: " 
+              << config.heartbeat_interval.count() << "s\n";
+    std::cout << "  Max parallel tasks: " << config.max_parallel_tasks << '\n';
+}
+```
+
+#### Collecting Telemetry
+
+```cpp
+#include <iostream>
+#include <nizaw/agent.hpp>
+
+void print_telemetry() {
+    auto telemetry = nizaw::agent::collect_telemetry();
+    
+    std::cout << "Agent Telemetry:\n";
+    std::cout << "  Hostname: " << telemetry.hostname << '\n';
+    std::cout << "  Kernel: " << telemetry.kernel << '\n';
+    std::cout << "  Architecture: " << telemetry.arch << '\n';
+    std::cout << "  Uptime: " << telemetry.uptime << '\n';
+    std::cout << "  Load average: " << telemetry.loadavg << '\n';
+    std::cout << "  IP address: " << telemetry.ip_address << '\n';
+    std::cout << "  Agent version: " << telemetry.agent_version << '\n';
+}
+```
+
+#### Checking Agent Status
+
+```cpp
+#include <iostream>
+#include <nizaw/agent.hpp>
+
+void check_agent_status() {
+    auto running_result = nizaw::agent::is_running();
+    if (!running_result) {
+        std::cerr << "Failed to check status: " 
+                  << running_result.error().message() << '\n';
+        return;
+    }
+    
+    if (running_result.value()) {
+        auto pid_result = nizaw::agent::get_pid();
+        if (pid_result) {
+            std::cout << "Agent is running (PID: " 
+                      << pid_result.value() << ")\n";
+        } else {
+            std::cout << "Agent is running\n";
+        }
+    } else {
+        std::cout << "Agent is not running\n";
+    }
+}
+```
+
+#### Using the Task Queue
+
+```cpp
+#include <iostream>
+#include <nizaw/agent.hpp>
+
+void task_queue_example() {
+    nizaw::agent::TaskQueue queue("/tmp/nizaw_tasks.db");
+    
+    // Enqueue a task result
+    nizaw::agent::TaskResult result;
+    result.task_id = "task-001";
+    result.success = true;
+    result.output = "Command executed successfully";
+    result.exit_code = 0;
+    
+    auto enqueue_result = queue.enqueue(result);
+    if (!enqueue_result) {
+        std::cerr << "Failed to enqueue: " 
+                  << enqueue_result.error().message() << '\n';
+        return;
+    }
+    
+    std::cout << "Pending tasks: " << queue.pending_count() << '\n';
+    
+    // Dequeue the task
+    auto dequeued = queue.dequeue();
+    if (dequeued && dequeued.value().has_value()) {
+        const auto& task = dequeued.value().value();
+        std::cout << "Dequeued task: " << task.task_id << '\n';
+        std::cout << "  Success: " << (task.success ? "yes" : "no") << '\n';
+        std::cout << "  Output: " << task.output << '\n';
+    }
 }
 ```
 

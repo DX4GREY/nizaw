@@ -10,6 +10,7 @@
 
 Optional:
 - `libsystemd` / `sd-bus` for the service module when available
+- OpenSSL, zlib, SQLite3 for the agent/remote modules (required when `NIZAW_BUILD_AGENT=ON`)
 
 ## Install prerequisites
 
@@ -17,19 +18,19 @@ Optional:
 
 ```bash
 sudo apt update
-sudo apt install -y build-essential cmake ninja-build pkg-config
+sudo apt install -y build-essential cmake ninja-build pkg-config libssl-dev zlib1g-dev libsqlite3-dev
 ```
 
 ### Fedora
 
 ```bash
-sudo dnf install -y gcc-c++ cmake ninja-build pkgconfig
+sudo dnf install -y gcc-c++ cmake ninja-build pkgconfig openssl-devel zlib-devel sqlite-devel
 ```
 
 ### Arch
 
 ```bash
-sudo pacman -S --needed base-devel cmake ninja pkgconf
+sudo pacman -S --needed base-devel cmake ninja pkgconf openssl zlib sqlite
 ```
 
 ## Build from source
@@ -53,6 +54,7 @@ cmake --build build --parallel --target nizaw
 | `NIZAW_ENABLE_ASAN` | `OFF` | Enable AddressSanitizer |
 | `NIZAW_ENABLE_UBSAN` | `OFF` | Enable UndefinedBehaviorSanitizer |
 | `NIZAW_ENABLE_SYSTEMD` | `ON` | Enable systemd/sd-bus backed `nizaw::service` |
+| `NIZAW_BUILD_AGENT` | `ON` | Build the nizaw agent (remote orchestration) |
 
 ## Build examples (optional)
 
@@ -82,3 +84,12 @@ cmake --install build --prefix /tmp/nizaw-install
 ## Notes about optional systemd support
 
 If `libsystemd` is installed, the service module will build with systemd-backed support. If it is not installed, the build falls back to a stub implementation so the rest of the project still compiles.
+
+## Notes about agent/remote support
+
+The agent and remote modules require OpenSSL, zlib, and SQLite3. These are enabled by default via `NIZAW_BUILD_AGENT=ON`. To build without agent support (minimal dependency-free build):
+
+```bash
+cmake -S . -B build -G Ninja -DNIZAW_BUILD_AGENT=OFF
+cmake --build build --parallel
+```

@@ -1,0 +1,18 @@
+[agent]
+id = "auto-generate-uuid"
+server_url = "https://orchestrator.example.com"
+ca_cert = "/etc/nizaw/ca.crt"
+client_cert = "/etc/nizaw/client.crt"
+client_key = "/etc/nizaw/client.key"
+
+[behavior]
+heartbeat_interval_sec = 60
+jitter_percent = 30
+max_parallel_tasks = 4
+temp_dir = "/var/cache/nizaw/"
+
+[security]
+allow_exec = true
+allow_fetch = true
+allow_push = true
+restricted_paths = ["/etc/shadow", "/root/", "/boot/"]

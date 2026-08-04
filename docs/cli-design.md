@@ -61,8 +61,14 @@ nizaw
 │   ├── identity
 │   └── capabilities
 │
-└── plugins
-    └── list [DIRECTORY]
+├── plugins
+│   └── list [DIRECTORY]
+│
+└── agent
+    ├── start [--config <PATH>]
+    ├── stop
+    ├── status
+    └── config [--validate] [--config <PATH>]
 ```
 
 Each leaf command maps 1:1 onto a library call (see `api-design.md` §2) —

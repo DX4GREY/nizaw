@@ -31,6 +31,7 @@ Nizaw is useful when you want to:
 - List systemd services with `nizaw service list` and inspect with `nizaw service status <UNIT>`
 - Get security identity with `nizaw security identity` and capabilities with `nizaw security capabilities`
 - Discover and load third-party plugins with `nizaw plugins list [DIRECTORY]`
+- Manage the distributed agent with `nizaw agent status`, `nizaw agent config`, `nizaw agent start`, `nizaw agent stop`
 - Use the same APIs from a C++ application without going through the CLI
 
 ## Typical use cases
@@ -68,9 +69,9 @@ cmake --build build --parallel --target nizaw
 
 ## Project status
 
-**Version:** 2.0.1
+**Version:** 3.0.0
 
-The project currently targets Linux x86_64 systems with C++20 and builds a complete modular library plus a CLI executable. The default build includes all modules (core, system, process, filesystem, storage, network, service, security, plugin), tests, and the `nizaw` CLI. Examples can be enabled with `-DNIZAW_BUILD_EXAMPLES=ON`.
+The project currently targets Linux x86_64 systems with C++20 and builds a complete modular library plus a CLI executable. The default build includes all modules (core, system, process, filesystem, storage, network, service, security, plugin, remote, agent), tests, and the `nizaw` CLI. Examples can be enabled with `-DNIZAW_BUILD_EXAMPLES=ON`.
 
 ### Available modules
 
@@ -83,6 +84,8 @@ The project currently targets Linux x86_64 systems with C++20 and builds a compl
 - **service** - systemd unit listing and status via D-Bus
 - **security** - UID/GID/group and capability reporting
 - **plugin** - Plugin discovery and dynamic loading from .so files
+- **remote** - mTLS transport layer for agent-orchestrator communication (OpenSSL)
+- **agent** - Distributed agentic orchestration: lifecycle, config, telemetry, task execution, SQLite-backed task queue
 - **cli** - Complete command-line application with human-readable and JSON output
 
 ### Build options
@@ -91,4 +94,5 @@ The project currently targets Linux x86_64 systems with C++20 and builds a compl
 - `NIZAW_BUILD_TESTS=ON` (default) - Build unit/integration tests
 - `NIZAW_BUILD_EXAMPLES=OFF` - Build example programs
 - `NIZAW_ENABLE_SYSTEMD=ON` (default) - Enable systemd-backed service module
+- `NIZAW_BUILD_AGENT=ON` (default) - Build the nizaw agent (remote orchestration)
 - `NIZAW_BUILD_SHARED=OFF` - Build libnizaw as a shared library

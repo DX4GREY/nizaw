@@ -2,7 +2,7 @@
 
 Modern Linux System & CLI Framework written in C++20
 
-> **Status:** Stable v2.1.0 — Production-ready modular library with comprehensive CLI support, write operations, and integrated tests.
+> **Status:** Stable v3.0.0 — Production-ready modular library with comprehensive CLI support, write operations, distributed agent orchestration, and integrated tests.
 
 ## Features
 
@@ -67,6 +67,22 @@ Modern Linux System & CLI Framework written in C++20
 - Plugin descriptor with name, version, description, commands
 - Optional lifecycle hooks: init, cleanup, execute, version, commands
 
+### Agent Module (`nizaw::agent`) — v3.0.0+
+- Distributed agentic orchestration: agent lifecycle, config, telemetry
+- Agent configuration via TOML (`agent.toml`) with validation
+- Telemetry collection: hostname, kernel, arch, uptime, loadavg, IP address
+- Task execution engine: exec_cmd, exec_script, fetch_file, push_file, sys_probe, sleep, upgrade
+- SQLite-backed task queue with persistence and retry support
+- Configurable security: allow_exec, allow_fetch, allow_push, restricted_paths
+
+### Remote Module (`nizaw::remote`) — v3.0.0+
+- mTLS transport layer for agent-orchestrator communication
+- TLS 1.3 only with certificate-based authentication
+- HTTPS/2 client with heartbeat and task result delivery
+- Certificate fingerprinting and server verification
+- HTTP/2 client with mTLS
+- Certificate utilities: load_cert_fingerprint, verify_server_fingerprint
+
 ### Write Operations Safety (v2.0.0+)
 - `WriteOptions`: dry-run, force, recursive, timeout, confirmation prompts
 - `CapabilitySet`: Check Linux capabilities (CAP_SYS_ADMIN, CAP_NET_ADMIN, CAP_DAC_OVERRIDE, etc.)
@@ -121,6 +137,7 @@ ctest --test-dir build --output-on-failure
 | `NIZAW_ENABLE_ASAN` | `OFF` | Enable AddressSanitizer |
 | `NIZAW_ENABLE_UBSAN` | `OFF` | Enable UndefinedBehaviorSanitizer |
 | `NIZAW_ENABLE_SYSTEMD` | `ON` | Enable systemd/sd-bus backed `nizaw::service` |
+| `NIZAW_BUILD_AGENT` | `ON` | Build the nizaw agent (remote orchestration) |
 
 ### Build Examples
 
@@ -282,9 +299,17 @@ cmake --build build --parallel --target nizaw
 # Discover plugins
 ./build/nizaw plugins list ./path/to/plugins
 
+# Agent commands (requires NIZAW_BUILD_AGENT=ON)
+./build/nizaw agent status
+./build/nizaw agent config --validate --config agent.toml
+./build/nizaw agent config --config agent.toml
+./build/nizaw agent start --config agent.toml
+./build/nizaw agent stop
+
 # Output as JSON
 ./build/nizaw --json system info
 ./build/nizaw process list --json
+./build/nizaw agent status --json
 ```
 
 ## Development
