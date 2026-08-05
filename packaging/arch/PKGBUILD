@@ -1,0 +1,19 @@
+# Maintainer: DX4GREY <dx4grey@users.noreply.github.com>
+# Arch Linux PKGBUILD for nizaw
+# This file is used by build-arch.sh; version is substituted at build time.
+
+pkgname=nizaw
+pkgver=__VERSION__
+pkgrel=1
+pkgdesc="Modern Linux System & CLI Framework written in C++20"
+arch=('x86_64')
+url="https://github.com/DX4GREY/nizaw"
+license=('MIT')
+depends=('glibc' 'gcc-libs' 'systemd-libs' 'openssl' 'zlib' 'sqlite')
+source=()
+sha256sums=()
+
+package() {
+    # The staging directory is pre-populated by build-arch.sh
+    cp -a "${srcdir}/staging/." "${pkgdir}/"
+}

@@ -77,9 +77,158 @@ jobs:
           name: ${{ matrix.name }}
           path: ${{ env.ARTIFACT_NAME }}
 
+  package-deb:
+    name: Package Debian (.deb)
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TYPE: Release
+      BUILD_DIR: build-deb
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config libsystemd-dev libcap-dev dpkg-dev
+
+      - name: Configure project
+        run: |
+          cmake -S . -B "${BUILD_DIR}" -G Ninja \
+            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+            -DNIZAW_BUILD_TESTS=OFF
+
+      - name: Build all targets
+        run: |
+          cmake --build "${BUILD_DIR}" --parallel
+
+      - name: Install to staging directory
+        run: |
+          cmake --install "${BUILD_DIR}" --prefix "${PWD}/staging"
+
+      - name: Build .deb package
+        run: |
+          bash packaging/deb/build-deb.sh "${VERSION}" "${PWD}/staging" "${PWD}/packages"
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-package
+          path: packages/*.deb
+
+  package-rpm:
+    name: Package Fedora/RPM (.rpm)
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TYPE: Release
+      BUILD_DIR: build-rpm
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config libsystemd-dev libcap-dev rpm
+
+      - name: Configure project
+        run: |
+          cmake -S . -B "${BUILD_DIR}" -G Ninja \
+            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+            -DNIZAW_BUILD_TESTS=OFF
+
+      - name: Build all targets
+        run: |
+          cmake --build "${BUILD_DIR}" --parallel
+
+      - name: Install to staging directory
+        run: |
+          cmake --install "${BUILD_DIR}" --prefix "${PWD}/staging"
+
+      - name: Build .rpm package
+        run: |
+          bash packaging/rpm/build-rpm.sh "${VERSION}" "${PWD}/staging" "${PWD}/packages"
+
+      - name: Upload .rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: packages/*.rpm
+
+  package-arch:
+    name: Package Arch Linux (.pkg.tar.zst)
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TYPE: Release
+      BUILD_DIR: build-arch
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config libsystemd-dev libcap-dev
+
+      - name: Install makepkg and Arch packaging tools
+        run: |
+          sudo apt-get install -y pacman-package-manager || true
+          # makepkg requires a pacman-based system; use a container approach instead
+          echo "Using archlinux container for packaging"
+
+      - name: Configure project
+        run: |
+          cmake -S . -B "${BUILD_DIR}" -G Ninja \
+            -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+            -DNIZAW_BUILD_TESTS=OFF
+
+      - name: Build all targets
+        run: |
+          cmake --build "${BUILD_DIR}" --parallel
+
+      - name: Install to staging directory
+        run: |
+          cmake --install "${BUILD_DIR}" --prefix "${PWD}/staging"
+
+      - name: Build .pkg.tar.zst package (Arch container)
+        run: |
+          # makepkg refuses to run as root, so we create a non-root builder user
+          # inside the archlinux container to run the packaging.
+          # We also pass the packaging script + PKGBUILD from this repo.
+          docker run --rm \
+            -v "${PWD}:/work" \
+            -w /work \
+            archlinux:latest \
+            bash -cx "
+              pacman -Sy --noconfirm base-devel cmake ninja pkg-config systemd-libs openssl zlib sqlite > /dev/null 2>&1
+              useradd -m builder
+              chown -R builder:builder /work /tmp
+              chmod -R a+rX /work
+              runuser -u builder -- bash packaging/arch/build-arch.sh '${VERSION}' '/work/staging' '/work/packages'
+            "
+          ls -lh packages/*.pkg.tar.zst
+
+      - name: Upload .pkg.tar.zst artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-package
+          path: packages/*.pkg.tar.zst
+
   release:
     name: Publish release
-    needs: build
+    needs: [build, package-deb, package-rpm, package-arch]
     runs-on: ubuntu-latest
     env:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
@@ -136,6 +285,9 @@ jobs:
             echo "### Build highlights"
             echo "- Linux x86_64 release binary"
             echo "- Release archive includes headers, libraries, and CLI binary"
+            echo "- Debian (.deb) package"
+            echo "- Fedora/RPM (.rpm) package"
+            echo "- Arch Linux (.pkg.tar.zst) package"
             echo ""
             echo "### Recent commits"
             echo "$COMMITS"
@@ -160,3 +312,6 @@ jobs:
           body_path: release-notes.md
           files: |
             dist/*/*.tar.gz
+            dist/deb-package/*.deb
+            dist/rpm-package/*.rpm
+            dist/arch-package/*.pkg.tar.zst

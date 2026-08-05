@@ -13,6 +13,9 @@ build-*/
 # Release / packaging artifacts
 *.tar.gz
 *.zip
+*.deb
+*.rpm
+*.pkg.tar.zst
 /dist/
 
 # CMake / compiler generated files
