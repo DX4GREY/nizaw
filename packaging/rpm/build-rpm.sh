@@ -24,14 +24,11 @@ RPMBUILD_DIR="${WORK_DIR}/rpmbuild"
 mkdir -p "${RPMBUILD_DIR}"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 
 # Create source tarball from staging dir.
-# %setup expects the tarball to extract into a directory named
-# ${PKG_NAME}-${PKG_VERSION}, so we stage files under that prefix.
-STAGING_PREFIX="${WORK_DIR}/src/${PKG_NAME}-${PKG_VERSION}"
-mkdir -p "${STAGING_PREFIX}"
-cp -a "${STAGING_DIR}/." "${STAGING_PREFIX}/"
-
+# %setup -c -n %{name}-%{version} already creates the top-level
+# directory, so the tarball must contain the installed files directly
+# (no ${PKG_NAME}-${PKG_VERSION}/ prefix) to avoid double nesting.
 TARBALL="${RPMBUILD_DIR}/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz"
-tar -czf "${TARBALL}" -C "${WORK_DIR}/src" "${PKG_NAME}-${PKG_VERSION}"
+tar -czf "${TARBALL}" -C "${STAGING_DIR}" .
 
 # Generate %files list dynamically from the staging directory.
 # This ensures only files that actually exist are packaged.
@@ -51,6 +48,9 @@ FILES_LIST="${RPMBUILD_DIR}/SPECS/files.list"
 
 # Write spec file
 cat > "${RPMBUILD_DIR}/SPECS/${PKG_NAME}.spec" <<EOF
+%define _enable_debug_package 0
+%define debug_package %{nil}
+
 Name:           ${PKG_NAME}
 Version:        ${PKG_VERSION}
 Release:        ${PKG_RELEASE}%{?dist}
@@ -61,6 +61,7 @@ URL:            https://github.com/DX4GREY/nizaw
 Source0:        %{name}-%{version}.tar.gz
 
 BuildArch:      ${ARCH}
+BuildRoot:      %{_topdir}/BUILDROOT
 
 Requires:       glibc >= 2.34
 Requires:       libgcc
@@ -84,7 +85,7 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}
 cp -a . %{buildroot}/
 
-%files -f files.list
+%files -f ${RPMBUILD_DIR}/SPECS/files.list
 EOF
 
 # Build the RPM
