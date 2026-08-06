@@ -155,6 +155,65 @@ cmake -S . -B build -G Ninja -DNIZAW_ENABLE_ASAN=ON -DNIZAW_ENABLE_UBSAN=ON
 cmake --build build --parallel
 ```
 
+### Portable Build (Self-Contained Release)
+
+The portable build statically links Nizaw's third-party dependencies (OpenSSL, Zlib, SQLite3, and optionally systemd) into the final executable. This produces a single binary that can be distributed to compatible Linux machines without requiring manual installation of Nizaw-specific runtime dependencies.
+
+**Platform/architecture compatibility assumptions:**
+- Linux x86_64 (glibc-based distributions: Ubuntu, Debian, Fedora, RHEL, etc.)
+- Kernel version must support the instructions used by the static libraries (generally very broad)
+- The binary remains dynamically linked to the system's standard C library and Linux kernel runtime (libc, ld-linux, etc.) — this is expected and unavoidable for glibc-linked binaries
+- Target machine must have compatible kernel and libc versions; cross-distribution deployment is generally safe for similar-generation distributions
+
+```bash
+# Clean portable build with CLI, no tests
+cmake -S . -B build -G Ninja \
+    -DNIZAW_PORTABLE=ON \
+    -DNIZAW_BUILD_CLI=ON \
+    -DNIZAW_BUILD_TESTS=OFF \
+    -DNIZAW_BUILD_AGENT=ON \
+    -DCMAKE_BUILD_TYPE=Release
+
+cmake --build build --parallel
+
+# The resulting binary is at:
+ls -lh build/nizaw
+
+# Verify dynamic dependencies (should NOT show libssl, libcrypto, libz, libsqlite3, libsystemd)
+ldd build/nizaw
+
+# Run the built-in portable verification target
+cmake --build build --target verify-portable
+```
+
+**Build option details for portable mode:**
+
+| CMake Option | Default (portable) | Description |
+| --- | --- | --- |
+| `NIZAW_PORTABLE` | `ON` (when explicitly set) | Enable static third-party dependency bundling |
+| `NIZAW_BUILD_SHARED` | Must be `OFF` | Portable mode requires static internal libraries |
+| `NIZAW_BUILD_CLI` | `ON` | Build the `nizaw` executable |
+| `NIZAW_BUILD_TESTS` | `OFF` (recommended) | Tests link dynamically to plugin fixture; can be `ON` |
+| `NIZAW_ENABLE_SYSTEMD` | `ON` | Requires static `libsystemd.a` when `NIZAW_PORTABLE=ON` |
+| `NIZAW_ENABLE_LTO` | `ON` | Link-time optimization for smaller/faster binary |
+| `CMAKE_BUILD_TYPE` | `Release` | Release enables `-ffunction-sections`, `-fdata-sections`, `--gc-sections` |
+
+**What gets statically bundled:**
+- OpenSSL (`libssl.a`, `libcrypto.a`) — TLS 1.3, certificate handling
+- Zlib (`libz.a`) — Compression
+- SQLite3 (`libsqlite3.a`) — Agent task queue persistence
+- systemd (`libsystemd.a`) — Service management, when `NIZAW_ENABLE_SYSTEMD=ON` and static archive is available
+
+**What remains system-provided (expected):**
+- Standard C library (`libc.so.6`)
+- Dynamic linker/loader (`ld-linux-x86-64.so.2`)
+- Linux kernel runtime (via system calls)
+
+**Configuration error handling:**
+- If a required static dependency is missing, CMake configuration fails with a clear message indicating which package to install (e.g., `libssl-dev`, `libz-dev`, `libsqlite3-dev`)
+- If `NIZAW_PORTABLE=ON` is combined with `NIZAW_BUILD_SHARED=ON`, configuration fails immediately
+- The test plugin fixture (`nizaw_test_plugin_fixture`) intentionally remains `SHARED` to test the dynamic-loading plugin mechanism
+
 ## Quick Start
 
 ### C++ Library

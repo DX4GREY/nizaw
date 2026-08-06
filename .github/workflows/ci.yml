@@ -74,6 +74,54 @@ jobs:
             ${{ env.BUILD_DIR }}/CMakeFiles/CMakeOutput.log
           if-no-files-found: ignore
 
+  portable:
+    name: Portable Build Verification
+    runs-on: ubuntu-latest
+    env:
+      BUILD_DIR: build-portable
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config libsystemd-dev libcap-dev libssl-dev libz-dev libsqlite3-dev
+
+      - name: Configure portable build
+        run: |
+          cmake -S . -B "${BUILD_DIR}" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DNIZAW_PORTABLE=ON \
+            -DNIZAW_BUILD_CLI=ON \
+            -DNIZAW_BUILD_TESTS=ON \
+            -DNIZAW_BUILD_AGENT=ON \
+            -DNIZAW_BUILD_EXAMPLES=OFF
+
+      - name: Build portable binary
+        run: |
+          cmake --build "${BUILD_DIR}" --parallel
+
+      - name: Run tests
+        run: |
+          ctest --test-dir "${BUILD_DIR}" --output-on-failure
+
+      - name: Verify portable binary
+        run: |
+          chmod +x "${BUILD_DIR}/nizaw"
+          "${BUILD_DIR}/nizaw" --version
+          bash scripts/verify-portable.sh "${BUILD_DIR}/nizaw"
+
+      - name: Upload portable binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: nizaw-portable-${{ matrix.arch }}
+          path: ${{ env.BUILD_DIR }}/nizaw
+          retention-days: 7
+
   lint:
     name: Code style and warnings
     runs-on: ubuntu-latest
