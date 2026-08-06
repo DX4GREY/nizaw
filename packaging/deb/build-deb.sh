@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Build a Debian (.deb) package for nizaw
 # Usage: build-deb.sh <version> <staging_dir> <output_dir>
-#   version     - e.g. 3.0.0
+#   version     - e.g. 3.0.5
 #   staging_dir - directory containing the installed files (usr/...)
 #   output_dir  - where to place the resulting .deb
 

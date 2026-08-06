@@ -257,7 +257,7 @@ Agent                              Orchestrator
   "uptime": "123456s",
   "loadavg": "0.52 0.68 0.72",
   "ip_address": "192.168.1.100",
-  "agent_version": "3.0.0"
+  "agent_version": "3.0.5"
 }
 ```
 

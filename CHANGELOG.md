@@ -1,6 +1,45 @@
 # Changelog
 
-## 3.0.0 (current)
+## 3.0.5 (current)
+
+### Added
+- **Pluggable Transport Layer (`nizaw::remote`)**:
+  - Abstract `Transport` interface with pluggable backends
+  - `TransportType` enum: Http, WebSocket, Mqtt, Grpc, Zmq, Quic
+  - `create_transport()` factory function
+  - Transport-specific options in `ServerConfig` (websocket_path, mqtt_topic, mqtt_qos, zmq_endpoint, grpc_use_http2)
+  - Backward compatibility functions: `https_post()`, `https_get()`
+- **NIZAW_PORTABLE Build Profile**:
+  - CMake option `NIZAW_PORTABLE` (default OFF) for self-contained releases
+  - Static linking of OpenSSL (libssl.a, libcrypto.a), Zlib (libz.a), SQLite3 (libsqlite3.a), systemd (libsystemd.a)
+  - Verification function `verify_static_library()` with clear error messages if static archives missing
+  - Release optimizations: `-ffunction-sections`, `-fdata-sections`, `--gc-sections`, optional LTO/IPO
+  - Built-in verification target `verify-portable` using ldd/readelf/objdump
+  - Script `scripts/verify-portable.sh` for automated forbidden dependency detection
+- **Transport CMake Options**:
+  - `NIZAW_TRANSPORT_WEBSOCKET=OFF` - Enable WebSocket transport
+  - `NIZAW_TRANSPORT_MQTT=OFF` - Enable MQTT transport
+  - `NIZAW_TRANSPORT_GRPC=OFF` - Enable gRPC transport
+  - `NIZAW_TRANSPORT_ZMQ=OFF` - Enable ZeroMQ transport
+  - `NIZAW_TRANSPORT_QUIC=OFF` - Enable QUIC/HTTP3 transport
+- **Documentation**:
+  - `docs/c2-transport-alternatives.md` - Comprehensive transport comparison and implementation strategy
+  - Updated architecture docs with transport evolution plan
+  - Updated wiki pages (Home, Development, Installation, Architecture) with portable build and transport options
+
+### Changed
+- `src/remote/transport.cpp` refactored from single `HttpTransport` to abstract transport layer with multiple backends
+- `include/nizaw/remote/transport.hpp` now defines `Transport` as pure virtual interface
+- All internal Nizaw libraries (core, system, process, filesystem, storage, network, service, security, plugin, remote, agent) built as static by default
+- Portable build disables PIC for internal libraries
+- systemd support remains optional with `unsupported.cpp` fallback when unavailable
+
+### Fixed
+- Version consistency across all project files (CMakeLists.txt, headers, source, docs, packaging)
+- Test plugin fixture intentionally remains SHARED to test dynamic loading mechanism
+- Portable mode correctly handles transitive dependencies without introducing shared-library dependencies
+
+## 3.0.0 (released)
 
 ### Added
 - **Agent Module (`nizaw::agent`)**:

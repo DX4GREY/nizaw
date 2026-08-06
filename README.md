@@ -2,7 +2,7 @@
 
 Modern Linux System & CLI Framework written in C++20
 
-> **Status:** Stable v3.0.0 — Production-ready modular library with comprehensive CLI support, write operations, distributed agent orchestration, and integrated tests.
+> **Status:** Stable v3.0.5 — Production-ready modular library with comprehensive CLI support, write operations, distributed agent orchestration, and integrated tests.
 
 ## Features
 
@@ -67,7 +67,7 @@ Modern Linux System & CLI Framework written in C++20
 - Plugin descriptor with name, version, description, commands
 - Optional lifecycle hooks: init, cleanup, execute, version, commands
 
-### Agent Module (`nizaw::agent`) — v3.0.0+
+### Agent Module (`nizaw::agent`) — v3.0.5+
 - Distributed agentic orchestration: agent lifecycle, config, telemetry
 - Agent configuration via TOML (`agent.toml`) with validation
 - Telemetry collection: hostname, kernel, arch, uptime, loadavg, IP address
@@ -75,7 +75,7 @@ Modern Linux System & CLI Framework written in C++20
 - SQLite-backed task queue with persistence and retry support
 - Configurable security: allow_exec, allow_fetch, allow_push, restricted_paths
 
-### Remote Module (`nizaw::remote`) — v3.0.0+
+### Remote Module (`nizaw::remote`) — v3.0.5+
 - mTLS transport layer for agent-orchestrator communication
 - TLS 1.3 only with certificate-based authentication
 - HTTPS/2 client with heartbeat and task result delivery

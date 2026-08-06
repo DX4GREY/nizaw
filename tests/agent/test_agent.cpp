@@ -78,7 +78,7 @@ int run_agent_tests() {
             failures++;
         }
         
-        if (telemetry.agent_version != "3.0.0") {
+        if (telemetry.agent_version != "3.0.5") {
             std::cerr << "Telemetry agent_version mismatch" << std::endl;
             failures++;
         }

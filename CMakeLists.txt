@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(nizaw
-    VERSION 3.0.0
+    VERSION 3.0.5
     DESCRIPTION "Modern Linux System & CLI Framework written in C++20"
     LANGUAGES CXX
 )

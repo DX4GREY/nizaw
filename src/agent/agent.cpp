@@ -358,7 +358,7 @@ TelemetryData collect_telemetry() {
     data.uptime = get_uptime();
     data.loadavg = get_loadavg();
     data.ip_address = get_ip_address();
-    data.agent_version = "3.0.0";
+    data.agent_version = "3.0.5";
     return data;
 }
 

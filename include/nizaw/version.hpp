@@ -12,9 +12,9 @@ namespace nizaw::core {
 /// `CMakeLists.txt`'s `project()` call).
 inline constexpr unsigned kVersionMajor = 3;
 inline constexpr unsigned kVersionMinor = 0;
-inline constexpr unsigned kVersionPatch = 0;
+inline constexpr unsigned kVersionPatch = 5;
 
-/// Human-readable version string, e.g. "3.0.0".
+/// Human-readable version string, e.g. "3.0.5".
 [[nodiscard]] std::string version_string();
 
 struct Version {

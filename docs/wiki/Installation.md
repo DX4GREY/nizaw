@@ -55,6 +55,12 @@ cmake --build build --parallel --target nizaw
 | `NIZAW_ENABLE_UBSAN` | `OFF` | Enable UndefinedBehaviorSanitizer |
 | `NIZAW_ENABLE_SYSTEMD` | `ON` | Enable systemd/sd-bus backed `nizaw::service` |
 | `NIZAW_BUILD_AGENT` | `ON` | Build the nizaw agent (remote orchestration) |
+| `NIZAW_PORTABLE` | `OFF` | Build self-contained release with static dependencies |
+| `NIZAW_TRANSPORT_WEBSOCKET` | `OFF` | Enable WebSocket transport |
+| `NIZAW_TRANSPORT_MQTT` | `OFF` | Enable MQTT transport |
+| `NIZAW_TRANSPORT_GRPC` | `OFF` | Enable gRPC transport |
+| `NIZAW_TRANSPORT_ZMQ` | `OFF` | Enable ZeroMQ transport |
+| `NIZAW_TRANSPORT_QUIC` | `OFF` | Enable QUIC/HTTP3 transport |
 
 ## Build examples (optional)
 

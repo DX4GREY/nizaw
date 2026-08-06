@@ -2018,6 +2018,145 @@ int main() {
 }
 ```
 
+## Portable Build Usage
+
+### Building a Portable Release
+
+The portable build creates a self-contained binary with statically linked third-party dependencies:
+
+```bash
+# Clean portable build
+rm -rf build
+cmake -S . -B build -G Ninja \
+    -DNIZAW_PORTABLE=ON \
+    -DNIZAW_BUILD_CLI=ON \
+    -DNIZAW_BUILD_TESTS=OFF \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DNIZAW_ENABLE_LTO=ON
+
+cmake --build build --parallel
+
+# Verify the binary is portable
+bash scripts/verify-portable.sh build/nizaw
+
+# Check dynamic dependencies (should only show libc, libstdc++, etc.)
+ldd build/nizaw
+```
+
+### What Gets Bundled
+
+The portable binary includes:
+- OpenSSL (libssl.a, libcrypto.a) - TLS 1.3, certificate handling
+- Zlib (libz.a) - Compression
+- SQLite3 (libsqlite3.a) - Agent task queue persistence
+- systemd (libsystemd.a) - Service management (if available)
+
+### What Remains System-Provided
+
+- Standard C library (libc.so.6)
+- C++ standard library (libstdc++.so.6)
+- Math library (libm.so.6)
+- GCC support library (libgcc_s.so.1)
+- Dynamic linker (ld-linux-x86-64.so.2)
+
+### Distribution
+
+The portable binary can be copied to any compatible Linux x86_64 machine and run without installing Nizaw-specific dependencies:
+
+```bash
+# Copy to target machine
+scp build/nizaw user@target:/usr/local/bin/
+
+# Verify it runs
+ssh user@target /usr/local/bin/nizaw --version
+ssh user@target /usr/local/bin/nizaw system info
+```
+
+## Transport Layer Configuration
+
+### Available Transports
+
+Nizaw supports multiple transport protocols for agent-orchestrator communication:
+
+1. **HTTP** (default) - HTTPS/1.1 polling
+2. **WebSocket** - Full-duplex persistent connection
+3. **MQTT** - Pub/sub messaging for large fleets
+4. **gRPC** - Type-safe streaming RPC
+5. **ZeroMQ** - Brokerless high-performance messaging
+6. **QUIC/HTTP3** - Modern transport with 0-RTT
+
+### Building with Alternative Transports
+
+```bash
+# HTTP (default) - no additional dependencies
+cmake -S . -B build -G Ninja -DNIZAW_BUILD_AGENT=ON
+
+# WebSocket (requires libwebsockets)
+cmake -S . -B build -G Ninja \
+    -DNIZAW_TRANSPORT_WEBSOCKET=ON \
+    -DNIZAW_BUILD_AGENT=ON
+
+# MQTT (requires libpaho-mqtt3c)
+cmake -S . -B build -G Ninja \
+    -DNIZAW_TRANSPORT_MQTT=ON \
+    -DNIZAW_BUILD_AGENT=ON
+
+# gRPC (requires protobuf + grpc)
+cmake -S . -B build -G Ninja \
+    -DNIZAW_TRANSPORT_GRPC=ON \
+    -DNIZAW_BUILD_AGENT=ON
+
+# ZeroMQ (requires libzmq)
+cmake -S . -B build -G Ninja \
+    -DNIZAW_TRANSPORT_ZMQ=ON \
+    -DNIZAW_BUILD_AGENT=ON
+
+# QUIC (requires msquic or quiche)
+cmake -S . -B build -G Ninja \
+    -DNIZAW_TRANSPORT_QUIC=ON \
+    -DNIZAW_BUILD_AGENT=ON
+```
+
+### Using Transports Programmatically
+
+```cpp
+#include <iostream>
+#include <nizaw/remote/transport.hpp>
+
+void demonstrate_transport_factory() {
+    nizaw::remote::ServerConfig config;
+    config.url = "https://orchestrator.example.com";
+    config.ca_cert = "/etc/nizaw/ca.crt";
+    config.client_cert = "/etc/nizaw/client.crt";
+    config.client_key = "/etc/nizaw/client.key";
+
+    // Create HTTP transport (default)
+    auto http_transport = nizaw::remote::create_transport(
+        config, 
+        nizaw::remote::TransportType::Http
+    );
+
+    // Create WebSocket transport
+    auto ws_transport = nizaw::remote::create_transport(
+        config, 
+        nizaw::remote::TransportType::WebSocket
+    );
+
+    // Create MQTT transport
+    config.mqtt_topic = "nizaw/agent/my-agent";
+    config.mqtt_qos = 1;
+    auto mqtt_transport = nizaw::remote::create_transport(
+        config, 
+        nizaw::remote::TransportType::Mqtt
+    );
+
+    // Use the transport
+    if (http_transport->connect()) {
+        std::cout << "Connected via HTTP\n";
+    }
+}
+```
+
 ## See Also
 
 - [CLI Design](../cli-design.md) - Complete CLI command reference
@@ -2025,3 +2164,4 @@ int main() {
 - [Architecture](../architecture.md) - System architecture and design
 - [Plugin Development](../wiki/PluginDevelopment.md) - Creating custom plugins
 - [Integration](../wiki/Integration.md) - Integrating Nizaw into your project
+- [C2 Transport Alternatives](../c2-transport-alternatives.md) - Transport comparison and selection guide

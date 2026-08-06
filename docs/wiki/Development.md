@@ -26,9 +26,19 @@ docs/                   # design and wiki documentation
 ## Build locally
 
 ```bash
+# Standard build
 cmake -S . -B build -G Ninja -DNIZAW_BUILD_CLI=ON
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
+
+# Portable build (self-contained release)
+cmake -S . -B build -G Ninja \
+    -DNIZAW_PORTABLE=ON \
+    -DNIZAW_BUILD_CLI=ON \
+    -DNIZAW_BUILD_TESTS=OFF \
+    -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+bash scripts/verify-portable.sh build/nizaw
 ```
 
 ## Build examples
@@ -86,7 +96,7 @@ This project exists to make Linux system introspection easier to build and reuse
 | Logging | Implemented | `nizaw::core::Logger` with level filtering |
 | Platform detection | Implemented | `/etc/os-release` parsing, systemd detection |
 | Environment helpers | Implemented | `nizaw::core::env::get`, `get_or`, `exists` |
-| Version metadata | Implemented | `nizaw::core::version()` — v3.0.0 |
+| Version metadata | Implemented | `nizaw::core::version()` — v3.0.5 |
 | System info | Implemented | Hostname, kernel, uptime, CPU, memory, swap, load, modules, hwmon |
 | Process inspection | Implemented | Process list, inspect, environment, signals, terminate, suspend, resume, nice |
 | Filesystem operations | Implemented | Usage, info, mounts, mkdir, rm, cp, mv, chmod, chown, write, read, truncate |
@@ -95,8 +105,9 @@ This project exists to make Linux system introspection easier to build and reuse
 | Service management | Implemented | systemd list, inspect, start, stop, restart, reload, enable, disable |
 | Security context | Implemented | UIDs, GIDs, groups, capabilities |
 | Plugin loading | Implemented | Dynamic discovery and loading of `.so` files with API versioning |
-| Remote transport | Implemented | mTLS transport, certificate fingerprinting, HTTP/2 client |
+| Remote transport | Implemented | Pluggable transport: HTTP (default), WebSocket, MQTT, gRPC, ZeroMQ, QUIC |
 | Agent orchestration | Implemented | Agent lifecycle, config, telemetry, task executor, task queue |
+| Portable build | Implemented | Static linking of OpenSSL, Zlib, SQLite3, systemd |
 
 ## Contributing
 

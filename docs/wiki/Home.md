@@ -45,9 +45,19 @@ Nizaw is useful when you want to:
 ## Quick start
 
 ```bash
+# Standard build
 cmake -S . -B build -DNIZAW_BUILD_CLI=ON
 cmake --build build --parallel --target nizaw
 ./build/nizaw --help
+
+# Portable build (self-contained binary)
+cmake -S . -B build -G Ninja \
+    -DNIZAW_PORTABLE=ON \
+    -DNIZAW_BUILD_CLI=ON \
+    -DNIZAW_BUILD_TESTS=OFF \
+    -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+./build/nizaw --version
 ```
 
 ## Typical workflow
@@ -69,7 +79,7 @@ cmake --build build --parallel --target nizaw
 
 ## Project status
 
-**Version:** 3.0.0
+**Version:** 3.0.5
 
 The project currently targets Linux x86_64 systems with C++20 and builds a complete modular library plus a CLI executable. The default build includes all modules (core, system, process, filesystem, storage, network, service, security, plugin, remote, agent), tests, and the `nizaw` CLI. Examples can be enabled with `-DNIZAW_BUILD_EXAMPLES=ON`.
 
@@ -84,7 +94,7 @@ The project currently targets Linux x86_64 systems with C++20 and builds a compl
 - **service** - systemd unit listing and status via D-Bus
 - **security** - UID/GID/group and capability reporting
 - **plugin** - Plugin discovery and dynamic loading from .so files
-- **remote** - mTLS transport layer for agent-orchestrator communication (OpenSSL)
+- **remote** - Pluggable transport layer for agent-orchestrator communication (HTTP, WebSocket, MQTT, gRPC, ZeroMQ, QUIC)
 - **agent** - Distributed agentic orchestration: lifecycle, config, telemetry, task execution, SQLite-backed task queue
 - **cli** - Complete command-line application with human-readable and JSON output
 
@@ -96,3 +106,9 @@ The project currently targets Linux x86_64 systems with C++20 and builds a compl
 - `NIZAW_ENABLE_SYSTEMD=ON` (default) - Enable systemd-backed service module
 - `NIZAW_BUILD_AGENT=ON` (default) - Build the nizaw agent (remote orchestration)
 - `NIZAW_BUILD_SHARED=OFF` - Build libnizaw as a shared library
+- `NIZAW_PORTABLE=OFF` - Build self-contained release with static third-party dependencies
+- `NIZAW_TRANSPORT_WEBSOCKET=OFF` - Enable WebSocket transport
+- `NIZAW_TRANSPORT_MQTT=OFF` - Enable MQTT transport
+- `NIZAW_TRANSPORT_GRPC=OFF` - Enable gRPC transport
+- `NIZAW_TRANSPORT_ZMQ=OFF` - Enable ZeroMQ transport
+- `NIZAW_TRANSPORT_QUIC=OFF` - Enable QUIC/HTTP3 transport

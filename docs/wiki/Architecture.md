@@ -42,7 +42,7 @@ nizaw
 | `service` | systemd unit listing/status/control via D-Bus | Makes service state visible and manageable in a consistent format |
 | `security` | UID/GID/group and capability reporting | Useful for privilege and security context inspection |
 | `plugin` | Plugin discovery and dynamic loading from `.so` files | Enables extension without modifying the core build |
-| `remote` | mTLS transport layer for agent-orchestrator communication (OpenSSL) | Provides secure communication for the agent module |
+| `remote` | Pluggable transport layer for agent-orchestrator communication (HTTP, WebSocket, MQTT, gRPC, ZeroMQ, QUIC) | Provides secure communication for the agent module |
 | `agent` | Distributed agentic orchestration: lifecycle, config, telemetry, task execution, SQLite-backed task queue | Enables remote task orchestration and telemetry collection |
 | `cli` | Complete command-line application with human-readable and JSON output | Gives the project a user-friendly interface on top of the library |
 
@@ -93,3 +93,9 @@ The default posture is zero required third-party runtime dependencies. The proje
 - `NIZAW_ENABLE_UBSAN=OFF` - Enable UndefinedBehaviorSanitizer
 - `NIZAW_ENABLE_SYSTEMD=ON` (default) - Enable systemd-backed service module
 - `NIZAW_BUILD_AGENT=ON` (default) - Build the nizaw agent (remote orchestration)
+- `NIZAW_PORTABLE=OFF` - Build self-contained release with static third-party dependencies
+- `NIZAW_TRANSPORT_WEBSOCKET=OFF` - Enable WebSocket transport (requires external library)
+- `NIZAW_TRANSPORT_MQTT=OFF` - Enable MQTT transport (requires external library)
+- `NIZAW_TRANSPORT_GRPC=OFF` - Enable gRPC transport (requires protobuf/gRPC)
+- `NIZAW_TRANSPORT_ZMQ=OFF` - Enable ZeroMQ transport (requires libzmq)
+- `NIZAW_TRANSPORT_QUIC=OFF` - Enable QUIC/HTTP3 transport (requires msquic/quiche)
