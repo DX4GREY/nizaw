@@ -31,6 +31,13 @@ option(NIZAW_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
 option(NIZAW_ENABLE_SYSTEMD "Enable systemd/sd-bus backed nizaw::service" ON)
 option(NIZAW_ENABLE_LTO "Enable Link-Time Optimization for release builds" ON)
 
+# Transport layer options
+option(NIZAW_TRANSPORT_WEBSOCKET "Enable WebSocket transport" OFF)
+option(NIZAW_TRANSPORT_MQTT "Enable MQTT transport" OFF)
+option(NIZAW_TRANSPORT_GRPC "Enable gRPC transport" OFF)
+option(NIZAW_TRANSPORT_ZMQ "Enable ZeroMQ transport" OFF)
+option(NIZAW_TRANSPORT_QUIC "Enable QUIC/HTTP3 transport" OFF)
+
 # Portable build validation
 if(NIZAW_PORTABLE)
     message(STATUS "========================================")

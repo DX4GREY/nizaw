@@ -249,3 +249,7 @@ These were flagged as open during early design and have since been resolved:
    feature-gated dependency (`NIZAW_ENABLE_SYSTEMD`, default ON). When
    unavailable, a stub implementation is built so the rest of the project
    still compiles (see `dependency-policy.md` §4).
+3. The agent transport layer is designed to be pluggable. The current
+   implementation uses HTTPS/1.1 polling. Future transport options
+   (WebSocket, MQTT, gRPC, ZeroMQ, QUIC) are documented in
+   [C2 Transport Alternatives](c2-transport-alternatives.md).

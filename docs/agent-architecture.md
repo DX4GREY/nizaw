@@ -153,7 +153,45 @@ Binary self-upgrade capability.
 
 ## Communication Protocol
 
-### Heartbeat Flow
+### Transport Layer
+
+The agent supports multiple transport protocols via a pluggable architecture:
+
+1. **HTTP** (default) — HTTPS/1.1 polling
+   - Heartbeat: POST /api/v1/tasks/pull with telemetry
+   - Results: POST /api/v1/tasks/result
+   - Simple, firewall-friendly, works everywhere
+
+2. **WebSocket** — Full-duplex persistent connection
+   - Eliminates polling overhead
+   - Real-time bidirectional messaging
+   - Lower latency for task push
+   - Enable with: `-DNIZAW_TRANSPORT_WEBSOCKET=ON`
+
+3. **MQTT** — Pub/sub messaging
+   - Topic-based addressing (e.g., `nizaw/agent/{id}/tasks`)
+   - QoS levels for reliability
+   - Suitable for 1000+ agent fleets
+   - Enable with: `-DNIZAW_TRANSPORT_MQTT=ON`
+
+4. **gRPC** — Type-safe streaming RPC
+   - Protobuf contracts
+   - Bi-directional streaming
+   - Enable with: `-DNIZAW_TRANSPORT_GRPC=ON`
+
+5. **ZeroMQ** — Brokerless messaging
+   - Ultra-low latency
+   - Multiple patterns (REQ/REP, PUB/SUB)
+   - Enable with: `-DNIZAW_TRANSPORT_ZMQ=ON`
+
+6. **QUIC/HTTP3** — Modern transport
+   - 0-RTT connection
+   - Better mobile/NAT behavior
+   - Enable with: `-DNIZAW_TRANSPORT_QUIC=ON`
+
+**Transport selection** is configured at build time via CMake options. The default HTTP transport requires no additional dependencies beyond OpenSSL.
+
+### Heartbeat Flow (HTTP)
 
 ```
 Agent                              Orchestrator
@@ -171,6 +209,42 @@ Agent                              Orchestrator
   ├─ POST /api/v1/tasks/result ────────>│
   │  {task_id, result, output}          │
   │                                     │
+```
+
+### Heartbeat Flow (WebSocket)
+
+```
+Agent                              Orchestrator
+  │                                     │
+  ├─ WS Connect (mTLS handshake) ──────>│
+  │<────────────────────────────────────┤
+  │                                     │
+  ├─ {type: "heartbeat", telemetry} ───>│
+  │<────────────────────────────────────┤
+  │              {type: "task", task}    │
+  │                                     │
+  ├─ {type: "result", task_id, output} ─>│
+  │<────────────────────────────────────┤
+  │              {type: "ack"}           │
+```
+
+### Heartbeat Flow (MQTT)
+
+```
+Agent                              Orchestrator
+  │                                     │
+  ├─ CONNECT (mTLS) ──────────────────>│
+  │<────────────────────────────────────┤
+  │                                     │
+  ├─ PUBLISH nizaw/agent/{id}/heartbeat │
+  │  {telemetry JSON} ─────────────────>│
+  │                                     ├─ Route to handler
+  │                                     │
+  │<────────────────────────────────────┤
+  │  nizaw/agent/{id}/tasks {task_id}   │
+  │                                     │
+  ├─ PUBLISH nizaw/agent/{id}/result    │
+  │  {task_id, result} ────────────────>│
 ```
 
 ### Telemetry Data
@@ -200,12 +274,32 @@ Agent                              Orchestrator
 ### Build with Agent Support
 
 ```bash
-# Default: agent enabled
+# Default: agent enabled, HTTP transport
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 
 # Disable agent (CLI-only build)
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DNIZAW_BUILD_AGENT=OFF
+cmake --build build -j$(nproc)
+
+# Enable WebSocket transport
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DNIZAW_TRANSPORT_WEBSOCKET=ON
+cmake --build build -j$(nproc)
+
+# Enable MQTT transport (requires libpaho-mqtt3c)
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DNIZAW_TRANSPORT_MQTT=ON
+cmake --build build -j$(nproc)
+
+# Enable gRPC transport (requires protobuf + grpc)
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DNIZAW_TRANSPORT_GRPC=ON
+cmake --build build -j$(nproc)
+
+# Enable ZeroMQ transport (requires libzmq)
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DNIZAW_TRANSPORT_ZMQ=ON
+cmake --build build -j$(nproc)
+
+# Enable QUIC transport (requires msquic or quiche)
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DNIZAW_TRANSPORT_QUIC=ON
 cmake --build build -j$(nproc)
 ```
 
@@ -365,6 +459,11 @@ public:
 - **Exponential backoff**: Failed deliveries retry with increasing delays
 - **SQLite WAL mode**: Write-ahead logging for concurrent queue access
 - **Worker threads**: Small thread pool (2-4 workers) prevents resource exhaustion
+- **WebSocket**: Reduces latency by eliminating polling interval
+- **MQTT**: Minimal overhead for large fleets with QoS-based delivery
+- **gRPC**: Efficient binary serialization with protobuf
+- **ZeroMQ**: Zero-copy messaging where possible
+- **QUIC**: 0-RTT connection resumption for faster reconnects
 
 ## Troubleshooting
 

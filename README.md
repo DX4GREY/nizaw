@@ -138,6 +138,11 @@ ctest --test-dir build --output-on-failure
 | `NIZAW_ENABLE_UBSAN` | `OFF` | Enable UndefinedBehaviorSanitizer |
 | `NIZAW_ENABLE_SYSTEMD` | `ON` | Enable systemd/sd-bus backed `nizaw::service` |
 | `NIZAW_BUILD_AGENT` | `ON` | Build the nizaw agent (remote orchestration) |
+| `NIZAW_TRANSPORT_WEBSOCKET` | `OFF` | Enable WebSocket transport (requires external lib) |
+| `NIZAW_TRANSPORT_MQTT` | `OFF` | Enable MQTT transport (requires external lib) |
+| `NIZAW_TRANSPORT_GRPC` | `OFF` | Enable gRPC transport (requires protobuf/gRPC) |
+| `NIZAW_TRANSPORT_ZMQ` | `OFF` | Enable ZeroMQ transport (requires libzmq) |
+| `NIZAW_TRANSPORT_QUIC` | `OFF` | Enable QUIC/HTTP3 transport (requires msquic/quiche) |
 
 ### Build Examples
 
